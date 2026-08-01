@@ -59,7 +59,8 @@
        Optional hardening: add the official SRI hash for this exact version,
        published at https://github.com/AzureAD/microsoft-authentication-library-for-js/wiki -->
   <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"
-          crossorigin="anonymous"></script>
+          crossorigin="anonymous"
+          onerror="(function(){var s=document.getElementById('status');s.textContent='The Microsoft sign-in library (MSAL) could not be loaded. Check your network or ad blocker.';s.className='status error';s.hidden=false;})()"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
