@@ -572,24 +572,50 @@
     el.photoCloseBtn.addEventListener("click", function () { el.photoDialog.close(); });
   }
 
+  window.addEventListener("error", function (e) {
+    var msg = (e.error && e.error.message) ? e.error.message : (e.message || "An unexpected error occurred.");
+    console.error("Unhandled error:", e.error || e);
+    setStatus("An unexpected error occurred: " + msg, true);
+  });
+
+  window.addEventListener("unhandledrejection", function (e) {
+    var msg = (e.reason && e.reason.message) ? e.reason.message : (e.reason ? String(e.reason) : "An unhandled error occurred.");
+    console.error("Unhandled rejection:", e.reason);
+    setStatus("An unexpected error occurred: " + msg, true);
+  });
+
   function start() {
-    if (!isConfigured()) {
-      setStatus("Not configured yet — open config.js and fill in the Client ID, Excel file ID and folder ID. See README for instructions.", true);
-      return;
-    }
-    wireEvents();
-    initAuth().then(function (existingAccount) {
-      if (existingAccount) {
-        account = existingAccount;
-        msalApp.setActiveAccount(account);
-        onSignedIn();
-      } else {
-        show(el.signIn, true);
-        setStatus("Sign in with your Microsoft account to view the inventory.");
+    try {
+      if (typeof msal === "undefined") {
+        setStatus("The Microsoft sign-in library (MSAL) could not be loaded. Check your network or ad blocker.", true);
+        return;
       }
-    }, function (error) {
-      setStatus("Authentication could not start: " + errorMessage(error), true);
-    });
+      if (typeof CONFIG === "undefined") {
+        setStatus("Configuration file (config.js) could not be loaded. Check your deployment and network connection.", true);
+        return;
+      }
+      if (!isConfigured()) {
+        setStatus("Not configured yet — open config.js and fill in the Client ID, Excel file ID and folder ID. See README for instructions.", true);
+        return;
+      }
+      wireEvents();
+      initAuth().then(function (existingAccount) {
+        if (existingAccount) {
+          account = existingAccount;
+          msalApp.setActiveAccount(account);
+          onSignedIn();
+        } else {
+          show(el.signIn, true);
+          setStatus("Sign in with your Microsoft account to view the inventory.");
+        }
+      }, function (error) {
+        console.error("Authentication error:", error);
+        setStatus("Authentication could not start: " + errorMessage(error), true);
+      });
+    } catch (error) {
+      console.error("Application startup error:", error);
+      setStatus("Application failed to start: " + errorMessage(error), true);
+    }
   }
 
   start();
