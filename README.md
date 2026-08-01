@@ -30,6 +30,28 @@ everyone who signs in opens exactly the same data.
 | `styles.css` | All styling (responsive, CSS Grid) |
 | `app.js` | Auth, Microsoft Graph calls, rendering |
 | `config.js` | Your Client ID, Excel file ID, folder ID |
+| `vendor/msal-browser.min.js` | MSAL.js browser library, vendored locally |
+
+### Vendored MSAL
+
+MSAL.js is not loaded from a CDN — it is committed to the repo at
+`vendor/msal-browser.min.js` and served from the same origin as the site. This
+removes an external point of failure and keeps the app working behind ad blockers
+or firewalls that block auth-related domains.
+
+Pinned version: **`@azure/msal-browser` 2.38.3** (v2 API — `app.js` depends on it).
+
+To update it, download `lib/msal-browser.min.js` from the npm package and replace
+the file, for example:
+
+```sh
+npm pack @azure/msal-browser@<version>
+tar xzf azure-msal-browser-<version>.tgz package/lib/msal-browser.min.js
+cp package/lib/msal-browser.min.js vendor/msal-browser.min.js
+```
+
+Do not commit the `.map` file. Staying on v2 is intentional: v3+ contains breaking
+changes that would require rewriting the auth layer in `app.js`.
 
 ## Setup
 
