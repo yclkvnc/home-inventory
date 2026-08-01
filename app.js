@@ -93,7 +93,8 @@
       auth: {
         clientId: CONFIG.clientId,
         authority: CONFIG.authority,
-        redirectUri: CONFIG.redirectUri
+        redirectUri: CONFIG.redirectUri,
+        responseMode: "fragment"
       },
       cache: {
         // Tokens are kept in memory only; nothing is written to localStorage.
