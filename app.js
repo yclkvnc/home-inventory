@@ -22,6 +22,9 @@
   var SUGGEST_COLUMNS = ["Category", "Room"];
   // Subfolder of the HomeInventory folder where item photos are stored.
   var DEFAULT_PHOTO_FOLDER = "Photos";
+  // How long a success confirmation stays on screen, in milliseconds.
+  var TOAST_TIMEOUT = 4000;
+  var SAVE_LABEL = "Save";
 
   var el = {
     status: document.getElementById("status"),
@@ -48,6 +51,12 @@
     removePhotoBtn: document.getElementById("remove-photo-btn"),
     cancelBtn: document.getElementById("cancel-btn"),
     saveBtn: document.getElementById("save-btn"),
+    saveLabel: document.getElementById("save-label"),
+    saveSpinner: document.getElementById("save-spinner"),
+    formErrorText: document.getElementById("form-error-text"),
+    retryBtn: document.getElementById("retry-btn"),
+    dismissErrorBtn: document.getElementById("dismiss-error-btn"),
+    toastRegion: document.getElementById("toast-region"),
     photoDialog: document.getElementById("photo-dialog"),
     photoFull: document.getElementById("photo-full"),
     photoCloseBtn: document.getElementById("photo-close-btn")
@@ -59,6 +68,8 @@
   var rows = [];      // [{ index: n, values: {Header: value} }]
   var editingId = null;
   var removePhotoFlag = false;
+  var saving = false;
+  var toastTimer = null;
   var photoUrlCache = {}; // PhotoName -> object URL
 
   /* ---------------------------------------------------------------- helpers */
@@ -71,6 +82,46 @@
 
   function show(node, visible) {
     node.hidden = !visible;
+  }
+
+  // Transient confirmation shown in a polite live region so screen readers
+  // announce it; it disappears on its own after a short delay.
+  function showToast(message) {
+    if (!el.toastRegion) return;
+    if (toastTimer) clearTimeout(toastTimer);
+    el.toastRegion.textContent = "";
+    var toast = document.createElement("div");
+    toast.className = "toast";
+    var text = document.createElement("p");
+    text.textContent = message;
+    toast.appendChild(text);
+    el.toastRegion.appendChild(toast);
+    toastTimer = setTimeout(function () {
+      el.toastRegion.textContent = "";
+      toastTimer = null;
+    }, TOAST_TIMEOUT);
+  }
+
+  // Errors stay visible (role="alert") until the user dismisses or retries.
+  function showFormError(message, canRetry) {
+    el.formErrorText.textContent = message;
+    show(el.retryBtn, !!canRetry);
+    show(el.formError, true);
+  }
+
+  function clearFormError() {
+    el.formErrorText.textContent = "";
+    show(el.retryBtn, false);
+    show(el.formError, false);
+  }
+
+  function setSaving(isSaving) {
+    saving = isSaving;
+    el.saveBtn.disabled = isSaving;
+    el.saveBtn.setAttribute("aria-busy", isSaving ? "true" : "false");
+    el.cancelBtn.disabled = isSaving;
+    show(el.saveSpinner, isSaving);
+    el.saveLabel.textContent = isSaving ? "Saving…" : SAVE_LABEL;
   }
 
   function isConfigured() {
@@ -547,7 +598,8 @@
         // Failed to load — fall back to the text hint already shown
       });
     }
-    show(el.formError, false);
+    clearFormError();
+    setSaving(false);
     el.dialog.showModal();
   }
 
@@ -561,19 +613,20 @@
   }
 
   function saveItem(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
+    if (saving) return;
+
     var input = readForm();
     if (headers.indexOf("Name") !== -1 && !input.Name) {
-      el.formError.textContent = "Name is required.";
-      show(el.formError, true);
+      showFormError("Name is required.", false);
       return;
     }
 
     var existing = editingId ? findRowById(editingId) : null;
     var file = el.photoInput.files && el.photoInput.files[0];
 
-    el.saveBtn.disabled = true;
-    show(el.formError, false);
+    setSaving(true);
+    clearFormError();
 
     var uploaded = file ? uploadPhoto(file) : Promise.resolve(null);
 
@@ -591,12 +644,12 @@
       return existing ? updateRow(existing.index, record) : addRow(record);
     }).then(function () {
       el.dialog.close();
+      showToast("Saved");
       return refresh();
     }).catch(function (error) {
-      el.formError.textContent = "Save failed: " + errorMessage(error);
-      show(el.formError, true);
+      showFormError("Save failed: " + errorMessage(error), true);
     }).then(function () {
-      el.saveBtn.disabled = false;
+      setSaving(false);
     });
   }
 
@@ -656,6 +709,8 @@
     el.filterRoom.addEventListener("change", render);
     el.form.addEventListener("submit", saveItem);
     el.cancelBtn.addEventListener("click", function () { el.dialog.close(); });
+    el.retryBtn.addEventListener("click", function () { saveItem(); });
+    el.dismissErrorBtn.addEventListener("click", clearFormError);
     el.removePhotoBtn.addEventListener("click", function () {
       removePhotoFlag = true;
       show(el.photoPreview, false);
