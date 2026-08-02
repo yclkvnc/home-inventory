@@ -42,6 +42,8 @@
     clearTagsBtn: document.getElementById("clear-tags-btn"),
     addBtn: document.getElementById("add-btn"),
     refreshBtn: document.getElementById("refresh-btn"),
+    expandAllBtn: document.getElementById("expand-all-btn"),
+    collapseAllBtn: document.getElementById("collapse-all-btn"),
     signIn: document.getElementById("signin-btn"),
     signOut: document.getElementById("signout-btn"),
     userName: document.getElementById("user-name"),
@@ -80,6 +82,9 @@
   var saving = false;
   var toastTimer = null;
   var photoUrlCache = {}; // PhotoName -> object URL
+  // Category name -> true when its panel is expanded. Empty on load, so every
+  // category panel starts collapsed.
+  var expandedCategories = {};
 
   /* ---------------------------------------------------------------- helpers */
 
@@ -617,17 +622,32 @@
     order.sort();
 
     order.forEach(function (category) {
-      var heading = document.createElement("h2");
+      var panel = document.createElement("details");
+      panel.className = "category-panel";
+      panel.open = expandedCategories[category] === true;
+      panel.addEventListener("toggle", function () {
+        expandedCategories[category] = panel.open;
+      });
+
+      var heading = document.createElement("summary");
       heading.className = "category-title";
       heading.textContent = category;
-      el.items.appendChild(heading);
+      panel.appendChild(heading);
 
       var grid = document.createElement("div");
       grid.className = "cards";
       groups[category].forEach(function (row) {
         grid.appendChild(buildCard(row));
       });
-      el.items.appendChild(grid);
+      panel.appendChild(grid);
+      el.items.appendChild(panel);
+    });
+  }
+
+  function setAllPanels(open) {
+    var panels = el.items.querySelectorAll(".category-panel");
+    Array.prototype.forEach.call(panels, function (panel) {
+      panel.open = open;
     });
   }
 
@@ -932,6 +952,8 @@
     el.signOut.addEventListener("click", signOut);
     el.addBtn.addEventListener("click", function () { openForm(null); });
     el.refreshBtn.addEventListener("click", function () { refresh(); });
+    el.expandAllBtn.addEventListener("click", function () { setAllPanels(true); });
+    el.collapseAllBtn.addEventListener("click", function () { setAllPanels(false); });
     el.search.addEventListener("input", render);
     el.filterCategory.addEventListener("change", render);
     el.filterRoom.addEventListener("change", render);

@@ -130,7 +130,9 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
 - **Filters** narrow the list by Category or Room.
 - **Tag filter** in the toolbar lists every tag in use; selecting several shows only the
   items carrying *all* of them, and **Clear tags** resets the selection.
-- Items are grouped by Category; click a photo thumbnail to view it full size.
+- Items are grouped by Category inside collapsible panels — all collapsed on load; use
+  **Expand all** / **Collapse all** to open or close every panel at once. Click a photo
+  thumbnail to view it full size.
 
 ### Dynamic columns
 
