@@ -16,7 +16,8 @@ Browser ──sign in (MSAL.js)──▶ Microsoft Identity Platform
    │
    └──Microsoft Graph API──▶ OneDrive /HomeInventory/
                                ├── inventory.xlsx   ← the database
-                               └── photo-*.jpg      ← item photos
+                               └── Photos/
+                                   └── photo-*.jpg  ← item photos
 ```
 
 The Excel file and the folder are referenced by their fixed OneDrive item IDs, so
@@ -29,7 +30,7 @@ everyone who signs in opens exactly the same data.
 | `index.html` | Single-page app shell |
 | `styles.css` | All styling (responsive, CSS Grid) |
 | `app.js` | Auth, Microsoft Graph calls, rendering |
-| `config.js` | Your Client ID, Excel file ID, folder ID |
+| `config.js` | Your Client ID, Excel file ID, folder ID, photo subfolder name |
 | `vendor/msal-browser.min.js` | MSAL.js browser library, vendored locally |
 
 ### Vendored MSAL
@@ -82,12 +83,16 @@ These steps are one-time and must be done manually by the repo owner.
    `ID`, `Name`, `Category`, `Room`, `Quantity`, `Notes`, `PhotoName`, `CreatedAt`, `Status`.
 4. Select the header row and choose **Insert → Table** (with headers), then rename the
    table to `Table1` (Table Design → Table Name).
-5. Get the OneDrive **item IDs** of the folder and of `inventory.xlsx`. The easiest way is
+5. Inside `HomeInventory`, create a subfolder named `Photos` — all item photos are
+   stored there, so the database and the images stay separate. The app never creates
+   this folder; if it is missing, uploading or opening a photo fails with a message
+   telling you to create it.
+6. Get the OneDrive **item IDs** of the folder and of `inventory.xlsx`. The easiest way is
    [Graph Explorer](https://developer.microsoft.com/graph/graph-explorer): sign in and run
    `GET https://graph.microsoft.com/v1.0/me/drive/root:/HomeInventory:/children` —
    the `id` of each entry is what you need. For the folder itself, run
    `GET https://graph.microsoft.com/v1.0/me/drive/root:/HomeInventory`.
-6. Share the `HomeInventory` folder with your family members ("Can edit"). One share
+7. Share the `HomeInventory` folder with your family members ("Can edit"). One share
    covers both the database and all photos.
 
 ### 3. Configure the app
@@ -101,6 +106,7 @@ Edit `config.js` and replace the placeholders:
 | `excelFileId` | OneDrive item ID of `inventory.xlsx` |
 | `folderId` | OneDrive item ID of the `HomeInventory` folder |
 | `tableName` | The Excel table name (default `Table1`) |
+| `photoFolder` | Name of the photo subfolder inside `HomeInventory` (default `Photos`) |
 
 Until these are filled in, the app shows a "Not configured yet" message instead of
 failing with a raw API error.
@@ -139,7 +145,11 @@ The `Status` column controls whether a row is visible in the app:
 
 Clicking **Delete** on a card marks the row as `deleted` instead of removing it, so the
 data is always recoverable. Rows can be cleaned up (permanently removed) manually in Excel
-whenever desired. The associated photo file in OneDrive is never removed by the app.
+whenever desired. The associated photo file in the `Photos` subfolder is never removed
+by the app.
+
+Excel stores only the photo's file name in `PhotoName`; the app always resolves it
+against the `Photos` subfolder of the `HomeInventory` folder.
 
 ## Security notes
 
