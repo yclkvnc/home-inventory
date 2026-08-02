@@ -114,6 +114,8 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
 
 - **Sign in** with your Microsoft account.
 - **Add Item** opens a form generated from the Excel column headers.
+- **Category** and **Room** suggest values already used in the inventory, while still
+  accepting any new value you type.
 - **Edit** / **Delete** are available on every card (delete asks for confirmation).
 - **Search** filters live across Name, Category, Room and Notes.
 - **Filters** narrow the list by Category or Room.

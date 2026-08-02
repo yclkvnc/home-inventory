@@ -16,6 +16,8 @@
   // Columns the app manages itself; they are not shown as editable form fields.
   var AUTO_COLUMNS = ["ID", "PhotoName", "CreatedAt"];
   var SEARCH_COLUMNS = ["Name", "Category", "Room", "Notes"];
+  // Free-text columns that also offer existing values as datalist suggestions.
+  var SUGGEST_COLUMNS = ["Category", "Room"];
 
   var el = {
     status: document.getElementById("status"),
@@ -297,14 +299,19 @@
     });
   }
 
-  function fillFilter(select, column, allLabel) {
-    var previous = select.value;
-    var options = [];
+  function distinctValues(column) {
+    var values = [];
     rows.forEach(function (row) {
       var value = row.values[column];
-      if (value && options.indexOf(value) === -1) options.push(value);
+      if (value && values.indexOf(value) === -1) values.push(value);
     });
-    options.sort();
+    values.sort();
+    return values;
+  }
+
+  function fillFilter(select, column, allLabel) {
+    var previous = select.value;
+    var options = distinctValues(column);
     select.textContent = "";
     var all = document.createElement("option");
     all.value = "";
@@ -424,7 +431,20 @@
     return "field-" + header.replace(/[^A-Za-z0-9_-]/g, "_");
   }
 
+  function buildDatalist(header) {
+    var list = document.createElement("datalist");
+    list.id = fieldId(header) + "-options";
+    distinctValues(header).forEach(function (value) {
+      var option = document.createElement("option");
+      option.value = value;
+      list.appendChild(option);
+    });
+    return list;
+  }
+
   function buildForm(record) {
+    // Clearing the container also drops the datalists built for the previous
+    // dialog, so their IDs are never duplicated.
     el.formFields.textContent = "";
     activeHeaders().forEach(function (header) {
       var wrapper = document.createElement("div");
@@ -435,6 +455,7 @@
       label.htmlFor = fieldId(header);
 
       var input;
+      var datalist = null;
       if (header === "Notes") {
         input = document.createElement("textarea");
         input.rows = 3;
@@ -442,6 +463,11 @@
         input = document.createElement("input");
         input.type = header === "Quantity" ? "number" : "text";
         if (header === "Quantity") input.min = "0";
+        if (SUGGEST_COLUMNS.indexOf(header) !== -1) {
+          datalist = buildDatalist(header);
+          input.setAttribute("list", datalist.id);
+          input.autocomplete = "off";
+        }
       }
       input.id = fieldId(header);
       input.name = header;
@@ -450,6 +476,7 @@
 
       wrapper.appendChild(label);
       wrapper.appendChild(input);
+      if (datalist) wrapper.appendChild(datalist);
       el.formFields.appendChild(wrapper);
     });
   }
