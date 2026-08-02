@@ -23,6 +23,12 @@
       <input id="search" type="search" class="input" placeholder="Search name, category, room, notes…" aria-label="Search items">
       <select id="filter-category" class="input" aria-label="Filter by category"></select>
       <select id="filter-room" class="input" aria-label="Filter by room"></select>
+      <select id="sort-field" class="input" aria-label="Sort by">
+        <option value="Name">Sort: Name</option>
+        <option value="CreatedAt">Sort: CreatedAt</option>
+        <option value="UpdatedAt">Sort: UpdatedAt</option>
+      </select>
+      <button id="sort-direction-btn" type="button" class="btn" aria-label="Sort direction">Descending</button>
       <button id="add-btn" type="button" class="btn btn-primary">Add Item</button>
       <button id="refresh-btn" type="button" class="btn">Refresh</button>
       <button id="expand-all-btn" type="button" class="btn">Expand all</button>

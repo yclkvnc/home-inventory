@@ -80,7 +80,8 @@ These steps are one-time and must be done manually by the repo owner.
 1. Create a folder named `HomeInventory` in your OneDrive.
 2. Inside it, create an Excel workbook named `inventory.xlsx`.
 3. Put these headers in the first row:
-   `ID`, `Name`, `Category`, `Room`, `Quantity`, `Notes`, `Tags`, `PhotoName`, `CreatedAt`, `Status`.
+   `ID`, `Name`, `Category`, `Room`, `Quantity`, `Notes`, `Tags`, `PhotoName`, `CreatedAt`,
+   `UpdatedAt`, `Status`.
 4. Select the header row and choose **Insert → Table** (with headers), then rename the
    table to `Table1` (Table Design → Table Name).
 5. Inside `HomeInventory`, create a subfolder named `Photos` — all item photos are
@@ -130,16 +131,25 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
 - **Filters** narrow the list by Category or Room.
 - **Tag filter** in the toolbar lists every tag in use; selecting several shows only the
   items carrying *all* of them, and **Clear tags** resets the selection.
+- **Sort** drives both levels at once: pick `Name`, `CreatedAt` or `UpdatedAt` and toggle
+  the direction button. Items are sorted by the chosen field, categories by the newest
+  value among their items (alphabetically when `Name` is chosen). Rows with an empty
+  `UpdatedAt` fall back to their `CreatedAt`, and rows with neither sort last. The
+  selection defaults to `UpdatedAt` descending and is remembered in `localStorage`.
 - Items are grouped by Category inside collapsible panels — all collapsed on load; use
   **Expand all** / **Collapse all** to open or close every panel at once. Click a photo
   thumbnail to view it full size.
+- After saving an item, its category panel opens and the item is scrolled into view and
+  briefly highlighted; the sort selection is left untouched.
 
 ### Dynamic columns
 
 The app reads the column headers from the Excel table at runtime. Add a new column in
 Excel (for example `Brand` or `Warranty Until`) and it automatically appears in the form
-and on the cards — no code change needed. `ID`, `PhotoName`, `CreatedAt` and `Status` are
-managed by the app and are not editable in the form.
+and on the cards — no code change needed. `ID`, `PhotoName`, `CreatedAt`, `UpdatedAt` and
+`Status` are managed by the app and are not editable in the form. `CreatedAt` and
+`UpdatedAt` are still shown read-only on the cards; `UpdatedAt` is written on every save,
+edit and delete. All dates are displayed in your local timezone.
 
 ### Tags column
 
