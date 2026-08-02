@@ -20,7 +20,7 @@
   var SEARCH_COLUMNS = ["Name", "Category", "Room", "Notes", "Tags"];
   // Column holding the item tags, stored as one separator-joined string.
   var TAGS_COLUMN = "Tags";
-  var TAG_SEPARATOR = ";";
+  var TAG_SEPARATOR = " ";
   // Free-text columns that also offer existing values as datalist suggestions.
   var SUGGEST_COLUMNS = ["Category", "Room"];
   // Subfolder of the HomeInventory folder where item photos are stored.
