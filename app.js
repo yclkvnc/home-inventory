@@ -14,7 +14,7 @@
   ];
 
   // Columns the app manages itself; they are not shown as editable form fields.
-  var AUTO_COLUMNS = ["ID", "PhotoName", "CreatedAt", "Status"];
+  var AUTO_COLUMNS = ["ID", "PhotoName", "CreatedAt", "UpdatedAt", "Status"];
   // Columns hidden from the card detail list (distinct from AUTO_COLUMNS).
   var CARD_HIDDEN_COLUMNS = ["ID", "PhotoName", "Status", "Tags"];
   var SEARCH_COLUMNS = ["Name", "Category", "Room", "Notes", "Tags"];
@@ -27,7 +27,15 @@
   var DEFAULT_PHOTO_FOLDER = "Photos";
   // How long a success confirmation stays on screen, in milliseconds.
   var TOAST_TIMEOUT = 4000;
+  // How long the card of a freshly saved item stays highlighted, in milliseconds.
+  var HIGHLIGHT_TIMEOUT = 2500;
   var SAVE_LABEL = "Save";
+  // Fields the toolbar sort control offers, for both items and categories.
+  var SORT_FIELDS = ["Name", "CreatedAt", "UpdatedAt"];
+  var DEFAULT_SORT_FIELD = "UpdatedAt";
+  var DEFAULT_SORT_DIRECTION = "desc";
+  var SORT_STORAGE_KEY = "homeInventory.sort";
+  var UNCATEGORIZED = "Uncategorized";
 
   var el = {
     status: document.getElementById("status"),
@@ -38,6 +46,8 @@
     filterCategory: document.getElementById("filter-category"),
     filterRoom: document.getElementById("filter-room"),
     tagFilter: document.getElementById("tag-filter"),
+    sortField: document.getElementById("sort-field"),
+    sortDirectionBtn: document.getElementById("sort-direction-btn"),
     tagFilterList: document.getElementById("tag-filter-list"),
     clearTagsBtn: document.getElementById("clear-tags-btn"),
     addBtn: document.getElementById("add-btn"),
@@ -85,6 +95,10 @@
   // Category name -> true when its panel is expanded. Empty on load, so every
   // category panel starts collapsed.
   var expandedCategories = {};
+  // Sort selection shared by categories and items; restored from localStorage.
+  var sortField = DEFAULT_SORT_FIELD;
+  var sortDirection = DEFAULT_SORT_DIRECTION;
+  var highlightTimer = null;
 
   /* ---------------------------------------------------------------- helpers */
 
@@ -159,6 +173,102 @@
   function errorMessage(error) {
     if (!error) return "Unknown error.";
     return error.message || String(error);
+  }
+
+  /* ------------------------------------------------------------------ dates */
+
+  var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  var ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+  // Parses the date values the app stores (ISO timestamps) and the plain dates a
+  // user may type into a custom column. Date-only values are read as local dates
+  // so they are not shifted by a day west of UTC.
+  function parseDate(value) {
+    var text = String(value === undefined || value === null ? "" : value).trim();
+    var date = null;
+    if (ISO_DATE.test(text)) {
+      var parts = text.split("-");
+      date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    } else if (ISO_DATE_TIME.test(text)) {
+      date = new Date(text);
+    }
+    return date && !isNaN(date.getTime()) ? date : null;
+  }
+
+  // Every date shown in the UI is rendered in the viewer's local timezone; any
+  // other value is passed through unchanged.
+  function formatValue(value) {
+    var text = String(value === undefined || value === null ? "" : value);
+    var date = parseDate(text);
+    if (!date) return text;
+    return ISO_DATE.test(text.trim()) ? date.toLocaleDateString() : date.toLocaleString();
+  }
+
+  /* ----------------------------------------------------------------- sorting */
+
+  function loadSort() {
+    var stored = null;
+    try {
+      stored = JSON.parse(window.localStorage.getItem(SORT_STORAGE_KEY));
+    } catch (e) { /* no or unusable storage — keep the defaults */ }
+    if (stored && SORT_FIELDS.indexOf(stored.field) !== -1) sortField = stored.field;
+    if (stored && (stored.direction === "asc" || stored.direction === "desc")) {
+      sortDirection = stored.direction;
+    }
+  }
+
+  function saveSort() {
+    try {
+      window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify({
+        field: sortField,
+        direction: sortDirection
+      }));
+    } catch (e) { /* storage unavailable — the selection stays for this session */ }
+  }
+
+  // Timestamp a row sorts by, or null when it has no usable value. An empty
+  // UpdatedAt falls back to CreatedAt for rows written before that column existed.
+  function rowTime(record, field) {
+    var date = parseDate(record[field]);
+    if (!date && field === "UpdatedAt") date = parseDate(record.CreatedAt);
+    return date ? date.getTime() : null;
+  }
+
+  function directed(comparison) {
+    return sortDirection === "desc" ? -comparison : comparison;
+  }
+
+  function compareText(a, b) {
+    return directed(a.toLowerCase().localeCompare(b.toLowerCase()));
+  }
+
+  // Rows without a value sort last whatever the direction is.
+  function compareTime(a, b) {
+    if (a === null && b === null) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return directed(a < b ? -1 : (a > b ? 1 : 0));
+  }
+
+  function compareRows(a, b) {
+    if (sortField === "Name") return compareText(a.values.Name || "", b.values.Name || "");
+    return compareTime(rowTime(a.values, sortField), rowTime(b.values, sortField));
+  }
+
+  // A category sorts by the most recent value of its items; with Name selected
+  // categories keep their natural alphabetical order instead.
+  function categoryTime(groupRows) {
+    var best = null;
+    groupRows.forEach(function (row) {
+      var time = rowTime(row.values, sortField);
+      if (time !== null && (best === null || time > best)) best = time;
+    });
+    return best;
+  }
+
+  function compareCategories(a, b, groups) {
+    if (sortField === "Name") return compareText(a, b);
+    return compareTime(categoryTime(groups[a]), categoryTime(groups[b]));
   }
 
   /* ------------------------------------------------------------------- tags */
@@ -532,6 +642,7 @@
     var record = row.values;
     var card = document.createElement("article");
     card.className = "card";
+    if (record.ID) card.setAttribute("data-item-id", record.ID);
 
     if (record.PhotoName) {
       var img = document.createElement("img");
@@ -560,7 +671,7 @@
       var dt = document.createElement("dt");
       dt.textContent = header;
       var dd = document.createElement("dd");
-      dd.textContent = value;
+      dd.textContent = formatValue(value);
       list.appendChild(dt);
       list.appendChild(dd);
     });
@@ -611,15 +722,17 @@
 
     var groups = {};
     var order = [];
-    visible.forEach(function (row) {
-      var category = row.values.Category || "Uncategorized";
+    visible.slice().sort(compareRows).forEach(function (row) {
+      var category = row.values.Category || UNCATEGORIZED;
       if (!groups[category]) {
         groups[category] = [];
         order.push(category);
       }
       groups[category].push(row);
     });
-    order.sort();
+    order.sort(function (a, b) {
+      return compareCategories(a, b, groups);
+    });
 
     order.forEach(function (category) {
       var panel = document.createElement("details");
@@ -649,6 +762,32 @@
     Array.prototype.forEach.call(panels, function (panel) {
       panel.open = open;
     });
+  }
+
+  // After a save the item may sit inside a collapsed panel: open only that
+  // panel, leave the others as they are, and flag the card so the user sees
+  // where the saved item landed.
+  function revealItem(id) {
+    var row = findRowById(id);
+    if (!row) return;
+    var category = row.values.Category || UNCATEGORIZED;
+    if (expandedCategories[category] !== true) {
+      expandedCategories[category] = true;
+      render();
+    }
+    var card = null;
+    var cards = el.items.querySelectorAll(".card");
+    Array.prototype.forEach.call(cards, function (candidate) {
+      if (candidate.getAttribute("data-item-id") === id) card = candidate;
+    });
+    if (!card) return;
+    if (highlightTimer) clearTimeout(highlightTimer);
+    card.classList.add("card-highlight");
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    highlightTimer = setTimeout(function () {
+      card.classList.remove("card-highlight");
+      highlightTimer = null;
+    }, HIGHLIGHT_TIMEOUT);
   }
 
   /* ------------------------------------------------------------------- form */
@@ -876,6 +1015,7 @@
     clearFormError();
 
     var uploaded = file ? uploadPhoto(file) : Promise.resolve(null);
+    var savedId = null;
 
     uploaded.then(function (photoName) {
       var record = Object.assign({}, existing ? existing.values : {}, input);
@@ -888,11 +1028,17 @@
         record.ID = newId();
         record.CreatedAt = new Date().toISOString();
       }
+      record.UpdatedAt = new Date().toISOString();
+      savedId = record.ID;
       return existing ? updateRow(existing.index, record) : addRow(record);
     }).then(function () {
       el.dialog.close();
       showToast("Saved");
       return refresh();
+    }).then(function () {
+      // The sort selection is deliberately left untouched here; the user's
+      // persisted preference decides where the saved item shows up.
+      if (savedId) revealItem(savedId);
     }).catch(function (error) {
       showFormError("Save failed: " + errorMessage(error), true);
     }).then(function () {
@@ -905,7 +1051,10 @@
     var row = findRowById(record.ID);
     if (!row) return;
     setStatus("Deleting…");
-    var updated = Object.assign({}, row.values, { Status: "deleted" });
+    var updated = Object.assign({}, row.values, {
+      Status: "deleted",
+      UpdatedAt: new Date().toISOString()
+    });
     updateRow(row.index, updated).then(function () {
       return refresh();
     }).catch(function (error) {
@@ -947,6 +1096,15 @@
     refresh();
   }
 
+  function syncSortControls() {
+    el.sortField.value = sortField;
+    el.sortDirectionBtn.textContent = sortDirection === "desc" ? "Descending" : "Ascending";
+    el.sortDirectionBtn.setAttribute(
+      "aria-label",
+      "Sort direction: " + (sortDirection === "desc" ? "descending" : "ascending")
+    );
+  }
+
   function wireEvents() {
     el.signIn.addEventListener("click", signIn);
     el.signOut.addEventListener("click", signOut);
@@ -957,6 +1115,20 @@
     el.search.addEventListener("input", render);
     el.filterCategory.addEventListener("change", render);
     el.filterRoom.addEventListener("change", render);
+    el.sortField.addEventListener("change", function () {
+      sortField = SORT_FIELDS.indexOf(el.sortField.value) !== -1
+        ? el.sortField.value
+        : DEFAULT_SORT_FIELD;
+      saveSort();
+      syncSortControls();
+      render();
+    });
+    el.sortDirectionBtn.addEventListener("click", function () {
+      sortDirection = sortDirection === "desc" ? "asc" : "desc";
+      saveSort();
+      syncSortControls();
+      render();
+    });
     el.clearTagsBtn.addEventListener("click", clearTagFilter);
     el.form.addEventListener("submit", saveItem);
     el.cancelBtn.addEventListener("click", function () { el.dialog.close(); });
@@ -998,6 +1170,8 @@
         return;
       }
       wireEvents();
+      loadSort();
+      syncSortControls();
       initAuth().then(function (existingAccount) {
         if (existingAccount) {
           account = existingAccount;
