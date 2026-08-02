@@ -20,6 +20,8 @@
   var SEARCH_COLUMNS = ["Name", "Category", "Room", "Notes"];
   // Free-text columns that also offer existing values as datalist suggestions.
   var SUGGEST_COLUMNS = ["Category", "Room"];
+  // Subfolder of the HomeInventory folder where item photos are stored.
+  var DEFAULT_PHOTO_FOLDER = "Photos";
 
   var el = {
     status: document.getElementById("status"),
@@ -195,9 +197,29 @@
       "/workbook/tables/" + encodeURIComponent(CONFIG.tableName || "Table1");
   }
 
-  function filePath(name) {
+  function photoFolderName() {
+    return CONFIG.photoFolder || DEFAULT_PHOTO_FOLDER;
+  }
+
+  // Photos live in a dedicated subfolder of the HomeInventory folder, so the
+  // Excel file and the images are not mixed together. Only the file name is
+  // stored in Excel; it is always resolved against that subfolder.
+  function photoPath(name) {
     return "/me/drive/items/" + encodeURIComponent(CONFIG.folderId) +
-      ":/" + encodeURIComponent(name) + ":";
+      ":/" + encodeURIComponent(photoFolderName()) +
+      "/" + encodeURIComponent(name) + ":";
+  }
+
+  // Graph returns 404 when either the photo or the Photos subfolder is absent.
+  function photoError(error) {
+    if (error && /Graph 404/.test(error.message || "")) {
+      return new Error(
+        "Not found in the \"" + photoFolderName() + "\" subfolder of your " +
+        "HomeInventory folder. Create that subfolder in OneDrive (see README) " +
+        "and make sure the photo is inside it."
+      );
+    }
+    return error;
   }
 
   function loadTable() {
@@ -252,22 +274,26 @@
 
   function uploadPhoto(file) {
     var name = "photo-" + newId() + "." + fileExtension(file.name);
-    return graph(filePath(name) + "/content", {
+    return graph(photoPath(name) + "/content", {
       method: "PUT",
       body: file,
       isRaw: true,
       headers: { "Content-Type": file.type || "application/octet-stream" }
     }).then(function () {
       return name;
+    }, function (error) {
+      throw photoError(error);
     });
   }
 
   function photoUrl(name) {
     if (photoUrlCache[name]) return Promise.resolve(photoUrlCache[name]);
-    return graph(filePath(name) + "/content", { asBlob: true }).then(function (blob) {
+    return graph(photoPath(name) + "/content", { asBlob: true }).then(function (blob) {
       var url = URL.createObjectURL(blob);
       photoUrlCache[name] = url;
       return url;
+    }, function (error) {
+      throw photoError(error);
     });
   }
 

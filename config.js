@@ -25,5 +25,9 @@ const CONFIG = {
   // Name of the Excel table inside inventory.xlsx
   tableName: "Table1",
 
+  // Name of the subfolder inside /HomeInventory/ that holds the item photos.
+  // It must exist in OneDrive; the app never creates it.
+  photoFolder: "Photos",
+
   scopes: ["Files.ReadWrite", "User.Read"]
 };
