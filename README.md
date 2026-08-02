@@ -143,6 +143,10 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
 - **Theme**: the ☾/☀ button in the top bar switches between light and dark. Without an
   explicit choice the app follows the operating system setting (`prefers-color-scheme`);
   the choice is remembered in `localStorage` under `homeInventory.theme`.
+- **Account menu**: when signed in the top bar shows only the theme toggle and a round
+  avatar with your initials. Clicking it opens a panel with your profile photo (from
+  Microsoft Graph, falling back to the initials when you have none), your full name, your
+  email address and the **Sign out** button. The panel closes on an outside click or Escape.
 - After saving an item, its category panel opens and the item is scrolled into view and
   briefly highlighted; the sort selection is left untouched.
 

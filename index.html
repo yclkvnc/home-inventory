@@ -13,9 +13,24 @@
       <button id="theme-toggle-btn" type="button" class="btn btn-icon" aria-pressed="false" aria-label="Switch to dark theme" title="Switch to dark theme">
         <span id="theme-toggle-icon" aria-hidden="true">☾</span>
       </button>
-      <span id="user-name" class="user-name" hidden></span>
       <button id="signin-btn" type="button" class="btn btn-primary" hidden>Sign in with Microsoft</button>
-      <button id="signout-btn" type="button" class="btn" hidden>Sign out</button>
+      <button id="account-btn" type="button" class="avatar" aria-expanded="false" aria-controls="account-panel" aria-haspopup="true" aria-label="Account" title="Account" hidden>
+        <span id="account-initials" class="avatar-initials" aria-hidden="true"></span>
+        <img id="account-photo" class="avatar-photo" alt="" hidden>
+      </button>
+      <div id="account-panel" class="account-panel" hidden>
+        <div class="account-identity">
+          <span id="account-panel-avatar" class="avatar avatar-large" aria-hidden="true">
+            <span id="account-panel-initials" class="avatar-initials"></span>
+            <img id="account-panel-photo" class="avatar-photo" alt="" hidden>
+          </span>
+          <span class="account-details">
+            <span id="account-name" class="account-name"></span>
+            <span id="account-email" class="account-email"></span>
+          </span>
+        </div>
+        <button id="signout-btn" type="button" class="btn">Sign out</button>
+      </div>
     </div>
   </header>
 
