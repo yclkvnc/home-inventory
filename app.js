@@ -71,7 +71,14 @@
     collapseAllBtn: document.getElementById("collapse-all-btn"),
     signIn: document.getElementById("signin-btn"),
     signOut: document.getElementById("signout-btn"),
-    userName: document.getElementById("user-name"),
+    accountBtn: document.getElementById("account-btn"),
+    accountPanel: document.getElementById("account-panel"),
+    accountInitials: document.getElementById("account-initials"),
+    accountPhoto: document.getElementById("account-photo"),
+    accountPanelInitials: document.getElementById("account-panel-initials"),
+    accountPanelPhoto: document.getElementById("account-panel-photo"),
+    accountName: document.getElementById("account-name"),
+    accountEmail: document.getElementById("account-email"),
     dialog: document.getElementById("item-dialog"),
     dialogTitle: document.getElementById("dialog-title"),
     form: document.getElementById("item-form"),
@@ -107,6 +114,7 @@
   var saving = false;
   var toastTimer = null;
   var photoUrlCache = {}; // PhotoName -> object URL
+  var accountPhotoUrl = null; // object URL of the signed-in user's Graph photo
   // Category name -> true when its panel is expanded. Empty on load, so every
   // category panel starts collapsed.
   var expandedCategories = {};
@@ -127,6 +135,16 @@
 
   function show(node, visible) {
     node.hidden = !visible;
+  }
+
+  // Avatar fallback: first letters of the first and last word, at most two.
+  function initials(name) {
+    var words = String(name || "").trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return "?";
+    var letters = words.length === 1
+      ? words[0].charAt(0)
+      : words[0].charAt(0) + words[words.length - 1].charAt(0);
+    return letters.toUpperCase();
   }
 
   // Transient confirmation shown in a polite live region so screen readers
@@ -444,6 +462,7 @@
 
   function signOut() {
     revokePhotoUrls();
+    revokeAccountPhoto();
     account = null;
     render();
     show(el.toolbar, false);
@@ -451,8 +470,8 @@
     showFilters(false);
     show(el.items, false);
     show(el.empty, false);
-    show(el.signOut, false);
-    show(el.userName, false);
+    showAccountMenu(false);
+    show(el.accountBtn, false);
     show(el.signIn, true);
     setStatus("Signing out…");
     msalApp.logoutRedirect({
@@ -603,6 +622,32 @@
       URL.revokeObjectURL(photoUrlCache[name]);
     });
     photoUrlCache = {};
+  }
+
+  function revokeAccountPhoto() {
+    if (accountPhotoUrl) URL.revokeObjectURL(accountPhotoUrl);
+    accountPhotoUrl = null;
+    el.accountPhoto.removeAttribute("src");
+    el.accountPanelPhoto.removeAttribute("src");
+    show(el.accountPhoto, false);
+    show(el.accountPanelPhoto, false);
+    show(el.accountInitials, true);
+    show(el.accountPanelInitials, true);
+  }
+
+  // Graph answers 404 when the account has no profile photo; the initials
+  // avatar rendered underneath then simply stays visible.
+  function loadAccountPhoto() {
+    return graph("/me/photo/$value", { asBlob: true }).then(function (blob) {
+      if (!account) return;
+      accountPhotoUrl = URL.createObjectURL(blob);
+      el.accountPhoto.src = accountPhotoUrl;
+      el.accountPanelPhoto.src = accountPhotoUrl;
+      show(el.accountInitials, false);
+      show(el.accountPanelInitials, false);
+      show(el.accountPhoto, true);
+      show(el.accountPanelPhoto, true);
+    }, function () { /* no photo — keep the initials */ });
   }
 
   /* --------------------------------------------------------------- rendering */
@@ -1195,14 +1240,25 @@
   }
 
   function onSignedIn() {
-    el.userName.textContent = account.name || account.username || "";
-    show(el.userName, true);
+    var name = account.name || account.username || "";
+    el.accountName.textContent = name;
+    el.accountEmail.textContent = account.username || "";
+    el.accountInitials.textContent = initials(name);
+    el.accountPanelInitials.textContent = el.accountInitials.textContent;
+    el.accountBtn.setAttribute("aria-label", "Account: " + name);
+    el.accountBtn.title = name;
     show(el.signIn, false);
-    show(el.signOut, true);
+    show(el.accountBtn, true);
+    loadAccountPhoto();
     show(el.toolbar, true);
     show(el.listHeader, true);
     show(el.items, true);
     refresh();
+  }
+
+  function showAccountMenu(open) {
+    show(el.accountPanel, open);
+    el.accountBtn.setAttribute("aria-expanded", open ? "true" : "false");
   }
 
   function syncSortControls() {
@@ -1235,6 +1291,9 @@
     el.filtersBtn.addEventListener("click", function () {
       showFilters(el.filtersPanel.hidden);
     });
+    el.accountBtn.addEventListener("click", function () {
+      showAccountMenu(el.accountPanel.hidden);
+    });
     el.clearFiltersBtn.addEventListener("click", clearFilters);
     // Close the filters popover on an outside click or Escape, like a menu.
     document.addEventListener("click", function (event) {
@@ -1249,6 +1308,18 @@
       if (event.key !== "Escape" || el.filtersPanel.hidden) return;
       showFilters(false);
       el.filtersBtn.focus();
+    });
+    // The account popover behaves like the filters one: outside click, Escape.
+    document.addEventListener("click", function (event) {
+      if (el.accountPanel.hidden) return;
+      if (!document.contains(event.target)) return;
+      if (el.accountBtn.contains(event.target) || el.accountPanel.contains(event.target)) return;
+      showAccountMenu(false);
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape" || el.accountPanel.hidden) return;
+      showAccountMenu(false);
+      el.accountBtn.focus();
     });
     el.sortField.addEventListener("change", function () {
       sortField = SORT_FIELDS.indexOf(el.sortField.value) !== -1
