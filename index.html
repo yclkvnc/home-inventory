@@ -38,6 +38,10 @@
       <div class="form-row">
         <label for="photo-input">Photo</label>
         <input id="photo-input" type="file" accept="image/*">
+        <div id="photo-preview" hidden>
+          <img id="photo-thumb" class="dialog-thumb" alt="Current photo">
+          <button type="button" id="remove-photo-btn" class="btn btn-danger">Remove photo</button>
+        </div>
         <p id="photo-current" class="hint" hidden></p>
       </div>
       <p id="form-error" class="error" hidden></p>

@@ -39,6 +39,9 @@
     formError: document.getElementById("form-error"),
     photoInput: document.getElementById("photo-input"),
     photoCurrent: document.getElementById("photo-current"),
+    photoPreview: document.getElementById("photo-preview"),
+    photoThumb: document.getElementById("photo-thumb"),
+    removePhotoBtn: document.getElementById("remove-photo-btn"),
     cancelBtn: document.getElementById("cancel-btn"),
     saveBtn: document.getElementById("save-btn"),
     photoDialog: document.getElementById("photo-dialog"),
@@ -51,6 +54,7 @@
   var headers = [];   // Excel column names, in sheet order
   var rows = [];      // [{ index: n, values: {Header: value} }]
   var editingId = null;
+  var removePhotoFlag = false;
   var photoUrlCache = {}; // PhotoName -> object URL
 
   /* ---------------------------------------------------------------- helpers */
@@ -490,6 +494,7 @@
 
   function openForm(id) {
     editingId = id || null;
+    removePhotoFlag = false;
     var row = id ? findRowById(id) : null;
     el.dialogTitle.textContent = row ? "Edit Item" : "Add Item";
     buildForm(row ? row.values : null);
@@ -497,6 +502,17 @@
     var current = row && row.values.PhotoName;
     el.photoCurrent.textContent = current ? "Current photo: " + current + " (choose a file to replace it)" : "";
     show(el.photoCurrent, !!current);
+    show(el.photoPreview, false);
+    el.photoThumb.src = "";
+    if (current) {
+      photoUrl(current).then(function (url) {
+        el.photoThumb.src = url;
+        show(el.photoPreview, true);
+        show(el.photoCurrent, false);
+      }, function () {
+        // Failed to load — fall back to the text hint already shown
+      });
+    }
     show(el.formError, false);
     el.dialog.showModal();
   }
@@ -529,7 +545,11 @@
 
     uploaded.then(function (photoName) {
       var record = Object.assign({}, existing ? existing.values : {}, input);
-      if (photoName) record.PhotoName = photoName;
+      if (photoName) {
+        record.PhotoName = photoName;
+      } else if (removePhotoFlag) {
+        record.PhotoName = "";
+      }
       if (!existing) {
         record.ID = newId();
         record.CreatedAt = new Date().toISOString();
@@ -601,6 +621,12 @@
     el.filterRoom.addEventListener("change", render);
     el.form.addEventListener("submit", saveItem);
     el.cancelBtn.addEventListener("click", function () { el.dialog.close(); });
+    el.removePhotoBtn.addEventListener("click", function () {
+      removePhotoFlag = true;
+      show(el.photoPreview, false);
+      el.photoThumb.src = "";
+      show(el.photoCurrent, false);
+    });
     el.photoCloseBtn.addEventListener("click", function () { el.photoDialog.close(); });
   }
 
