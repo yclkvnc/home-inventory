@@ -94,15 +94,21 @@
         clientId: CONFIG.clientId,
         authority: CONFIG.authority,
         redirectUri: CONFIG.redirectUri,
-        responseMode: "fragment"
+        navigateToLoginRequestUrl: true
       },
       cache: {
-        // Tokens are kept in memory only; nothing is written to localStorage.
-        cacheLocation: "sessionStorage",
-        storeAuthStateInCookie: false
+        // localStorage survives the full-page redirect round trip; Chrome
+        // partitions/blocks some sessionStorage + cookie access during auth.
+        cacheLocation: "localStorage",
+        storeAuthStateInCookie: true
       }
     });
-    return msalApp.handleRedirectPromise().then(function (result) {
+
+    var init = msalApp.initialize ? msalApp.initialize() : Promise.resolve();
+
+    return init.then(function () {
+      return msalApp.handleRedirectPromise();
+    }).then(function (result) {
       if (result && result.account) return result.account;
       var accounts = msalApp.getAllAccounts();
       return accounts.length ? accounts[0] : null;
@@ -114,26 +120,21 @@
     return msalApp.acquireTokenSilent(request).then(function (result) {
       return result.accessToken;
     }, function () {
-      return msalApp.acquireTokenPopup({ scopes: CONFIG.scopes }).then(function (result) {
-        return result.accessToken;
-      });
+      // Silent renewal failed — send the user through a full-page redirect.
+      msalApp.acquireTokenRedirect({ scopes: CONFIG.scopes, account: account });
+      return new Promise(function () { /* navigation in progress */ });
     });
   }
 
   function signIn() {
     setStatus("Signing in…");
-    msalApp.loginPopup({ scopes: CONFIG.scopes }).then(function (result) {
-      account = result.account;
-      msalApp.setActiveAccount(account);
-      onSignedIn();
-    }, function (error) {
+    msalApp.loginRedirect({ scopes: CONFIG.scopes }).catch(function (error) {
       setStatus("Sign-in failed: " + errorMessage(error), true);
     });
   }
 
   function signOut() {
     revokePhotoUrls();
-    msalApp.logoutPopup({ account: account }).catch(function () { /* ignore */ });
     account = null;
     render();
     show(el.toolbar, false);
@@ -142,7 +143,10 @@
     show(el.signOut, false);
     show(el.userName, false);
     show(el.signIn, true);
-    setStatus("Signed out. Sign in to view the inventory.");
+    setStatus("Signing out…");
+    msalApp.logoutRedirect({
+      postLogoutRedirectUri: CONFIG.redirectUri
+    }).catch(function () { /* ignore */ });
   }
 
   /* ------------------------------------------------------------ graph layer */
