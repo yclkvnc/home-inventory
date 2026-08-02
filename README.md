@@ -128,17 +128,21 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
   the suggestion list or type a new one and press Enter. Each tag becomes a chip that
   can be removed individually.
 - **Search** filters live across Name, Category, Room, Notes and Tags.
-- **Filters** narrow the list by Category or Room.
-- **Tag filter** in the toolbar lists every tag in use; selecting several shows only the
-  items carrying *all* of them, and **Clear tags** resets the selection.
+- **Filters** opens a panel holding the Category, Room and tag filters. The button shows a
+  badge with the number of active filters and **Clear all filters** resets them at once.
+- **Tag filter** in the filters panel lists every tag in use; selecting several shows only
+  the items carrying *all* of them, and **Clear tags** resets the tag selection.
 - **Sort** drives both levels at once: pick `Name`, `CreatedAt` or `UpdatedAt` and toggle
-  the direction button. Items are sorted by the chosen field, categories by the newest
-  value among their items (alphabetically when `Name` is chosen). Rows with an empty
+  the direction with the ↓/↑ button. Items are sorted by the chosen field, categories by
+  the newest value among their items (alphabetically when `Name` is chosen). Rows with an empty
   `UpdatedAt` fall back to their `CreatedAt`, and rows with neither sort last. The
   selection defaults to `UpdatedAt` descending and is remembered in `localStorage`.
 - Items are grouped by Category inside collapsible panels — all collapsed on load; use
-  **Expand all** / **Collapse all** to open or close every panel at once. Click a photo
-  thumbnail to view it full size.
+  **Expand all** / **Collapse all** above the list to open or close every panel at once.
+  Click a photo thumbnail to view it full size.
+- **Theme**: the ☾/☀ button in the top bar switches between light and dark. Without an
+  explicit choice the app follows the operating system setting (`prefers-color-scheme`);
+  the choice is remembered in `localStorage` under `homeInventory.theme`.
 - After saving an item, its category panel opens and the item is scrolled into view and
   briefly highlighted; the sort selection is left untouched.
 
