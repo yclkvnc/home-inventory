@@ -14,7 +14,9 @@
   ];
 
   // Columns the app manages itself; they are not shown as editable form fields.
-  var AUTO_COLUMNS = ["ID", "PhotoName", "CreatedAt"];
+  var AUTO_COLUMNS = ["ID", "PhotoName", "CreatedAt", "Status"];
+  // Columns hidden from the card detail list (distinct from AUTO_COLUMNS).
+  var CARD_HIDDEN_COLUMNS = ["ID", "PhotoName", "Status"];
   var SEARCH_COLUMNS = ["Name", "Category", "Room", "Notes"];
   // Free-text columns that also offer existing values as datalist suggestions.
   var SUGGEST_COLUMNS = ["Category", "Room"];
@@ -203,8 +205,18 @@
       headers = (data && data.value ? data.value : []).map(function (column) {
         return column.name;
       });
+      if (headers.length > 0 && headers.indexOf("Status") === -1) {
+        setStatus(
+          "The spreadsheet is missing a \"Status\" column. " +
+          "Please add a \"Status\" column to Table1 in inventory.xlsx and reload.",
+          true
+        );
+        rows = [];
+        return null;
+      }
       return graph(tablePath() + "/rows?$select=index,values");
     }).then(function (data) {
+      if (!data) return;
       rows = (data && data.value ? data.value : []).map(function (row) {
         var values = row.values && row.values[0] ? row.values[0] : [];
         var record = {};
@@ -235,12 +247,6 @@
     return graph(tablePath() + "/rows/itemAt(index=" + rowIndex + ")", {
       method: "PATCH",
       body: { values: [rowValuesArray(record)] }
-    });
-  }
-
-  function deleteRow(rowIndex) {
-    return graph(tablePath() + "/rows/itemAt(index=" + rowIndex + ")/delete", {
-      method: "POST"
     });
   }
 
@@ -296,6 +302,7 @@
     var room = el.filterRoom.value;
     return rows.filter(function (row) {
       var record = row.values;
+      if (record.Status === "deleted") return false;
       if (!matchesSearch(record, term)) return false;
       if (category && (record.Category || "") !== category) return false;
       if (room && (record.Room || "") !== room) return false;
@@ -306,6 +313,7 @@
   function distinctValues(column) {
     var values = [];
     rows.forEach(function (row) {
+      if (row.values.Status === "deleted") return;
       var value = row.values[column];
       if (value && values.indexOf(value) === -1) values.push(value);
     });
@@ -357,7 +365,7 @@
 
     var list = document.createElement("dl");
     headers.forEach(function (header) {
-      if (header === "Name" || header === "ID" || header === "PhotoName") return;
+      if (header === "Name" || CARD_HIDDEN_COLUMNS.indexOf(header) !== -1) return;
       var value = record[header];
       if (!value) return;
       var dt = document.createElement("dt");
@@ -567,11 +575,12 @@
   }
 
   function confirmDelete(record) {
-    if (!window.confirm('Delete "' + (record.Name || "this item") + '"? This cannot be undone.')) return;
+    if (!window.confirm('Delete "' + (record.Name || "this item") + '"? It will be hidden from the app but kept in the spreadsheet.')) return;
     var row = findRowById(record.ID);
     if (!row) return;
     setStatus("Deleting…");
-    deleteRow(row.index).then(function () {
+    var updated = Object.assign({}, row.values, { Status: "deleted" });
+    updateRow(row.index, updated).then(function () {
       return refresh();
     }).catch(function (error) {
       setStatus("Delete failed: " + errorMessage(error), true);

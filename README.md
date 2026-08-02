@@ -79,7 +79,7 @@ These steps are one-time and must be done manually by the repo owner.
 1. Create a folder named `HomeInventory` in your OneDrive.
 2. Inside it, create an Excel workbook named `inventory.xlsx`.
 3. Put these headers in the first row:
-   `ID`, `Name`, `Category`, `Room`, `Quantity`, `Notes`, `PhotoName`, `CreatedAt`.
+   `ID`, `Name`, `Category`, `Room`, `Quantity`, `Notes`, `PhotoName`, `CreatedAt`, `Status`.
 4. Select the header row and choose **Insert → Table** (with headers), then rename the
    table to `Table1` (Table Design → Table Name).
 5. Get the OneDrive **item IDs** of the folder and of `inventory.xlsx`. The easiest way is
@@ -125,8 +125,21 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
 
 The app reads the column headers from the Excel table at runtime. Add a new column in
 Excel (for example `Brand` or `Warranty Until`) and it automatically appears in the form
-and on the cards — no code change needed. `ID`, `PhotoName` and `CreatedAt` are managed
-by the app and are not editable in the form.
+and on the cards — no code change needed. `ID`, `PhotoName`, `CreatedAt` and `Status` are
+managed by the app and are not editable in the form.
+
+### Status column
+
+The `Status` column controls whether a row is visible in the app:
+
+| Value | Meaning |
+|---|---|
+| *(empty)* | Active — the item appears in the card list, filters and search results |
+| `deleted` | Soft-deleted — the item is hidden everywhere in the app but the row stays in the spreadsheet |
+
+Clicking **Delete** on a card marks the row as `deleted` instead of removing it, so the
+data is always recoverable. Rows can be cleaned up (permanently removed) manually in Excel
+whenever desired. The associated photo file in OneDrive is never removed by the app.
 
 ## Security notes
 
