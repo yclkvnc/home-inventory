@@ -75,9 +75,23 @@ body {
 .status.error { color: var(--danger); }
 .empty { color: var(--muted); }
 
+.category-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 12px 0;
+  padding: 8px 12px;
+}
+
 .category-title {
   font-size: 1rem;
-  margin: 20px 0 8px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.category-panel[open] > .category-title {
+  margin-bottom: 8px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
 }

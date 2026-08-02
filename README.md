@@ -125,7 +125,9 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
 - **Edit** / **Delete** are available on every card (delete asks for confirmation).
 - **Search** filters live across Name, Category, Room and Notes.
 - **Filters** narrow the list by Category or Room.
-- Items are grouped by Category; click a photo thumbnail to view it full size.
+- Items are grouped by Category inside collapsible panels — all collapsed on load; use
+  **Expand all** / **Collapse all** to open or close every panel at once. Click a photo
+  thumbnail to view it full size.
 
 ### Dynamic columns
 
