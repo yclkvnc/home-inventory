@@ -16,8 +16,11 @@
   // Columns the app manages itself; they are not shown as editable form fields.
   var AUTO_COLUMNS = ["ID", "PhotoName", "CreatedAt", "Status"];
   // Columns hidden from the card detail list (distinct from AUTO_COLUMNS).
-  var CARD_HIDDEN_COLUMNS = ["ID", "PhotoName", "Status"];
-  var SEARCH_COLUMNS = ["Name", "Category", "Room", "Notes"];
+  var CARD_HIDDEN_COLUMNS = ["ID", "PhotoName", "Status", "Tags"];
+  var SEARCH_COLUMNS = ["Name", "Category", "Room", "Notes", "Tags"];
+  // Column holding the item tags, stored as one separator-joined string.
+  var TAGS_COLUMN = "Tags";
+  var TAG_SEPARATOR = ";";
   // Free-text columns that also offer existing values as datalist suggestions.
   var SUGGEST_COLUMNS = ["Category", "Room"];
   // Subfolder of the HomeInventory folder where item photos are stored.
@@ -34,6 +37,9 @@
     search: document.getElementById("search"),
     filterCategory: document.getElementById("filter-category"),
     filterRoom: document.getElementById("filter-room"),
+    tagFilter: document.getElementById("tag-filter"),
+    tagFilterList: document.getElementById("tag-filter-list"),
+    clearTagsBtn: document.getElementById("clear-tags-btn"),
     addBtn: document.getElementById("add-btn"),
     refreshBtn: document.getElementById("refresh-btn"),
     expandAllBtn: document.getElementById("expand-all-btn"),
@@ -69,6 +75,9 @@
   var headers = [];   // Excel column names, in sheet order
   var rows = [];      // [{ index: n, values: {Header: value} }]
   var editingId = null;
+  var selectedTags = [];  // tag filter selection on the main screen
+  var formTags = [];      // tags being edited in the item dialog
+  var formTagChips = null; // container holding the tag chips of the item dialog
   var removePhotoFlag = false;
   var saving = false;
   var toastTimer = null;
@@ -150,6 +159,55 @@
   function errorMessage(error) {
     if (!error) return "Unknown error.";
     return error.message || String(error);
+  }
+
+  /* ------------------------------------------------------------------- tags */
+
+  // Tags live in one cell as a separator-joined string; whitespace around each
+  // tag is dropped and empty entries are ignored.
+  function parseTags(value) {
+    return String(value || "").split(TAG_SEPARATOR).map(function (tag) {
+      return tag.trim();
+    }).filter(function (tag) {
+      return tag !== "";
+    });
+  }
+
+  function formatTags(tags) {
+    return tags.join(TAG_SEPARATOR);
+  }
+
+  function hasTag(tags, tag) {
+    var wanted = tag.toLowerCase();
+    return tags.some(function (existing) {
+      return existing.toLowerCase() === wanted;
+    });
+  }
+
+  // Every tag used by the visible (not deleted) rows, sorted alphabetically.
+  function allTags() {
+    var tags = [];
+    rows.forEach(function (row) {
+      if (row.values.Status === "deleted") return;
+      parseTags(row.values[TAGS_COLUMN]).forEach(function (tag) {
+        if (!hasTag(tags, tag)) tags.push(tag);
+      });
+    });
+    tags.sort(function (a, b) {
+      return a.toLowerCase().localeCompare(b.toLowerCase());
+    });
+    return tags;
+  }
+
+  function hasTagsColumn() {
+    return headers.indexOf(TAGS_COLUMN) !== -1;
+  }
+
+  function tagChip(tag) {
+    var chip = document.createElement("span");
+    chip.className = "tag";
+    chip.textContent = tag;
+    return chip;
   }
 
   /* ------------------------------------------------------------------- auth */
@@ -378,6 +436,14 @@
     return haystack.indexOf(term) !== -1;
   }
 
+  function matchesTags(record) {
+    if (selectedTags.length === 0) return true;
+    var tags = parseTags(record[TAGS_COLUMN]);
+    return selectedTags.every(function (tag) {
+      return hasTag(tags, tag);
+    });
+  }
+
   function visibleRows() {
     var term = el.search.value.trim().toLowerCase();
     var category = el.filterCategory.value;
@@ -388,6 +454,7 @@
       if (!matchesSearch(record, term)) return false;
       if (category && (record.Category || "") !== category) return false;
       if (room && (record.Room || "") !== room) return false;
+      if (!matchesTags(record)) return false;
       return true;
     });
   }
@@ -419,6 +486,46 @@
     });
     select.value = options.indexOf(previous) !== -1 ? previous : "";
     show(select, headers.indexOf(column) !== -1);
+  }
+
+  function toggleTagFilter(tag) {
+    if (hasTag(selectedTags, tag)) {
+      selectedTags = selectedTags.filter(function (existing) {
+        return existing.toLowerCase() !== tag.toLowerCase();
+      });
+    } else {
+      selectedTags.push(tag);
+    }
+    fillTagFilter();
+    render();
+  }
+
+  // Tag filter: one toggle button per known tag; selecting several narrows the
+  // list to items carrying all of them.
+  function fillTagFilter() {
+    var tags = allTags();
+    selectedTags = selectedTags.filter(function (tag) {
+      return hasTag(tags, tag);
+    });
+    el.tagFilterList.textContent = "";
+    tags.forEach(function (tag) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "tag tag-toggle";
+      button.textContent = tag;
+      button.setAttribute("aria-pressed", hasTag(selectedTags, tag) ? "true" : "false");
+      button.addEventListener("click", function () { toggleTagFilter(tag); });
+      el.tagFilterList.appendChild(button);
+    });
+    show(el.clearTagsBtn, selectedTags.length > 0);
+    show(el.tagFilter, hasTagsColumn() && tags.length > 0);
+  }
+
+  function clearTagFilter() {
+    if (selectedTags.length === 0) return;
+    selectedTags = [];
+    fillTagFilter();
+    render();
   }
 
   function buildCard(row) {
@@ -458,6 +565,16 @@
       list.appendChild(dd);
     });
     card.appendChild(list);
+
+    var tags = parseTags(record[TAGS_COLUMN]);
+    if (tags.length > 0) {
+      var tagList = document.createElement("div");
+      tagList.className = "tags";
+      tags.forEach(function (tag) {
+        tagList.appendChild(tagChip(tag));
+      });
+      card.appendChild(tagList);
+    }
 
     var actions = document.createElement("div");
     actions.className = "card-actions";
@@ -551,10 +668,106 @@
     return list;
   }
 
+  // Renders the chips of the tags currently attached to the edited item; each
+  // chip carries a button that removes that single tag.
+  function renderFormTags() {
+    var list = formTagChips;
+    if (!list) return;
+    list.textContent = "";
+    formTags.forEach(function (tag) {
+      var chip = document.createElement("span");
+      chip.className = "tag tag-editable";
+      var text = document.createElement("span");
+      text.textContent = tag;
+      var remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "tag-remove";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", "Remove tag " + tag);
+      remove.addEventListener("click", function () {
+        formTags = formTags.filter(function (existing) {
+          return existing !== tag;
+        });
+        renderFormTags();
+      });
+      chip.appendChild(text);
+      chip.appendChild(remove);
+      list.appendChild(chip);
+    });
+  }
+
+  // Accepts both a picked suggestion and freshly typed text; several tags can
+  // be pasted at once because the separator is honoured here too.
+  function addFormTags(text) {
+    parseTags(text).forEach(function (tag) {
+      if (!hasTag(formTags, tag)) formTags.push(tag);
+    });
+    renderFormTags();
+  }
+
+  function buildTagField(wrapper, record) {
+    formTags = parseTags(record ? record[TAGS_COLUMN] : "");
+
+    var chips = document.createElement("div");
+    chips.className = "tags";
+    formTagChips = chips;
+
+    var input = document.createElement("input");
+    input.type = "text";
+    input.id = fieldId(TAGS_COLUMN);
+    input.name = TAGS_COLUMN;
+    input.autocomplete = "off";
+    input.placeholder = "Type a tag and press Enter";
+
+    var datalist = document.createElement("datalist");
+    datalist.id = fieldId(TAGS_COLUMN) + "-options";
+    allTags().forEach(function (tag) {
+      var option = document.createElement("option");
+      option.value = tag;
+      datalist.appendChild(option);
+    });
+    input.setAttribute("list", datalist.id);
+
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === TAG_SEPARATOR || event.key === ",") {
+        // Enter would otherwise submit the dialog form.
+        event.preventDefault();
+        addFormTags(input.value);
+        input.value = "";
+      } else if (event.key === "Backspace" && input.value === "" && formTags.length > 0) {
+        formTags.pop();
+        renderFormTags();
+      }
+    });
+    // Picking a suggestion replaces the typed text in one go; turn it into a
+    // chip straight away. Text still being typed is only turned into a chip on
+    // Enter, so the dialog does not resize under the pointer, and readForm()
+    // keeps whatever is left in the box when the item is saved.
+    input.addEventListener("input", function (event) {
+      var inputType = event.inputType;
+      if (inputType && inputType !== "insertReplacementText") return;
+      if (!hasTag(allTags(), input.value.trim())) return;
+      addFormTags(input.value);
+      input.value = "";
+    });
+
+    var hint = document.createElement("p");
+    hint.className = "hint";
+    hint.textContent = "Pick an existing tag or type a new one, then press Enter.";
+
+    wrapper.appendChild(chips);
+    wrapper.appendChild(input);
+    wrapper.appendChild(datalist);
+    wrapper.appendChild(hint);
+    renderFormTags();
+  }
+
   function buildForm(record) {
     // Clearing the container also drops the datalists built for the previous
     // dialog, so their IDs are never duplicated.
     el.formFields.textContent = "";
+    formTags = [];
+    formTagChips = null;
     activeHeaders().forEach(function (header) {
       var wrapper = document.createElement("div");
       wrapper.className = "form-row";
@@ -562,6 +775,13 @@
       var label = document.createElement("label");
       label.textContent = header;
       label.htmlFor = fieldId(header);
+
+      if (header === TAGS_COLUMN) {
+        wrapper.appendChild(label);
+        buildTagField(wrapper, record);
+        el.formFields.appendChild(wrapper);
+        return;
+      }
 
       var input;
       var datalist = null;
@@ -627,6 +847,13 @@
     var record = {};
     activeHeaders().forEach(function (header) {
       var input = document.getElementById(fieldId(header));
+      if (header === TAGS_COLUMN) {
+        // Whatever is still typed in the tag box counts as a tag as well.
+        if (input) addFormTags(input.value);
+        if (input) input.value = "";
+        record[header] = formatTags(formTags);
+        return;
+      }
       record[header] = input ? input.value.trim() : "";
     });
     return record;
@@ -703,6 +930,7 @@
     return loadTable().then(function () {
       fillFilter(el.filterCategory, "Category", "All categories");
       fillFilter(el.filterRoom, "Room", "All rooms");
+      fillTagFilter();
       render();
     }, function (error) {
       setStatus("Could not load the inventory: " + errorMessage(error), true);
@@ -729,6 +957,7 @@
     el.search.addEventListener("input", render);
     el.filterCategory.addEventListener("change", render);
     el.filterRoom.addEventListener("change", render);
+    el.clearTagsBtn.addEventListener("click", clearTagFilter);
     el.form.addEventListener("submit", saveItem);
     el.cancelBtn.addEventListener("click", function () { el.dialog.close(); });
     el.retryBtn.addEventListener("click", function () { saveItem(); });
