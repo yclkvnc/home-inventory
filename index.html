@@ -10,6 +10,9 @@
   <header class="topbar">
     <h1 class="brand">Home Inventory</h1>
     <div class="account">
+      <button id="theme-toggle-btn" type="button" class="btn btn-icon" aria-pressed="false" aria-label="Switch to dark theme" title="Switch to dark theme">
+        <span id="theme-toggle-icon" aria-hidden="true">☾</span>
+      </button>
       <span id="user-name" class="user-name" hidden></span>
       <button id="signin-btn" type="button" class="btn btn-primary" hidden>Sign in with Microsoft</button>
       <button id="signout-btn" type="button" class="btn" hidden>Sign out</button>
@@ -20,25 +23,62 @@
     <p id="status" class="status" role="status" aria-live="polite">Loading…</p>
 
     <section id="toolbar" class="toolbar" hidden>
-      <input id="search" type="search" class="input" placeholder="Search name, category, room, notes…" aria-label="Search items">
-      <select id="filter-category" class="input" aria-label="Filter by category"></select>
-      <select id="filter-room" class="input" aria-label="Filter by room"></select>
-      <select id="sort-field" class="input" aria-label="Sort by">
-        <option value="Name">Sort: Name</option>
-        <option value="CreatedAt">Sort: CreatedAt</option>
-        <option value="UpdatedAt">Sort: UpdatedAt</option>
-      </select>
-      <button id="sort-direction-btn" type="button" class="btn" aria-label="Sort direction">Descending</button>
-      <button id="add-btn" type="button" class="btn btn-primary">Add Item</button>
-      <button id="refresh-btn" type="button" class="btn">Refresh</button>
-      <button id="expand-all-btn" type="button" class="btn">Expand all</button>
-      <button id="collapse-all-btn" type="button" class="btn">Collapse all</button>
-      <div id="tag-filter" class="tag-filter" role="group" aria-label="Filter by tags" hidden>
-        <span class="tag-filter-label">Tags:</span>
-        <div id="tag-filter-list" class="tags"></div>
-        <button id="clear-tags-btn" type="button" class="btn btn-small" hidden>Clear tags</button>
+      <div class="toolbar-search">
+        <input id="search" type="search" class="input" placeholder="Search name, category, room, notes…" aria-label="Search items">
+      </div>
+
+      <div class="toolbar-group" role="group" aria-label="Filters">
+        <div class="filters">
+          <button id="filters-btn" type="button" class="btn filters-btn" aria-expanded="false" aria-controls="filters-panel">
+            Filters
+            <span id="filters-count" class="badge" hidden>0</span>
+          </button>
+          <div id="filters-panel" class="filters-panel" hidden>
+            <div class="filters-panel-head">
+              <span class="filters-panel-title">Filters</span>
+              <button id="clear-filters-btn" type="button" class="btn btn-small" disabled>Clear all filters</button>
+            </div>
+            <label class="filters-field" for="filter-category">
+              <span class="filters-field-label">Category</span>
+              <select id="filter-category" class="input" aria-label="Filter by category"></select>
+            </label>
+            <label class="filters-field" for="filter-room">
+              <span class="filters-field-label">Room</span>
+              <select id="filter-room" class="input" aria-label="Filter by room"></select>
+            </label>
+            <div id="tag-filter" class="tag-filter" role="group" aria-label="Filter by tags" hidden>
+              <span class="tag-filter-label">Tags</span>
+              <div id="tag-filter-list" class="tags"></div>
+              <button id="clear-tags-btn" type="button" class="btn btn-small" hidden>Clear tags</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar-group" role="group" aria-label="Sorting">
+        <select id="sort-field" class="input" aria-label="Sort by">
+          <option value="Name">Sort: Name</option>
+          <option value="CreatedAt">Sort: CreatedAt</option>
+          <option value="UpdatedAt">Sort: UpdatedAt</option>
+        </select>
+        <button id="sort-direction-btn" type="button" class="btn btn-icon" aria-label="Sort direction: descending">
+          <span id="sort-direction-icon" aria-hidden="true">↓</span>
+        </button>
+      </div>
+
+      <div class="toolbar-group toolbar-actions" role="group" aria-label="Actions">
+        <button id="add-btn" type="button" class="btn btn-primary">Add Item</button>
+        <button id="refresh-btn" type="button" class="btn">Refresh</button>
       </div>
     </section>
+
+    <div id="list-header" class="list-header" hidden>
+      <h2 class="list-title">Items</h2>
+      <div class="list-actions">
+        <button id="expand-all-btn" type="button" class="btn btn-small">Expand all</button>
+        <button id="collapse-all-btn" type="button" class="btn btn-small">Collapse all</button>
+      </div>
+    </div>
 
     <section id="items" class="items" hidden></section>
     <p id="empty" class="empty" hidden>No items match your search.</p>

@@ -35,6 +35,7 @@
   var DEFAULT_SORT_FIELD = "UpdatedAt";
   var DEFAULT_SORT_DIRECTION = "desc";
   var SORT_STORAGE_KEY = "homeInventory.sort";
+  var THEME_STORAGE_KEY = "homeInventory.theme";
   var UNCATEGORIZED = "Uncategorized";
 
   var el = {
@@ -43,11 +44,19 @@
     items: document.getElementById("items"),
     empty: document.getElementById("empty"),
     search: document.getElementById("search"),
+    filtersBtn: document.getElementById("filters-btn"),
+    filtersPanel: document.getElementById("filters-panel"),
+    filtersCount: document.getElementById("filters-count"),
+    clearFiltersBtn: document.getElementById("clear-filters-btn"),
     filterCategory: document.getElementById("filter-category"),
     filterRoom: document.getElementById("filter-room"),
     tagFilter: document.getElementById("tag-filter"),
     sortField: document.getElementById("sort-field"),
     sortDirectionBtn: document.getElementById("sort-direction-btn"),
+    sortDirectionIcon: document.getElementById("sort-direction-icon"),
+    listHeader: document.getElementById("list-header"),
+    themeToggleBtn: document.getElementById("theme-toggle-btn"),
+    themeToggleIcon: document.getElementById("theme-toggle-icon"),
     tagFilterList: document.getElementById("tag-filter-list"),
     clearTagsBtn: document.getElementById("clear-tags-btn"),
     addBtn: document.getElementById("add-btn"),
@@ -99,6 +108,8 @@
   var sortField = DEFAULT_SORT_FIELD;
   var sortDirection = DEFAULT_SORT_DIRECTION;
   var highlightTimer = null;
+  // "light" or "dark" once chosen explicitly, null while following the OS.
+  var theme = null;
 
   /* ---------------------------------------------------------------- helpers */
 
@@ -202,6 +213,52 @@
     var date = parseDate(text);
     if (!date) return text;
     return ISO_DATE.test(text.trim()) ? date.toLocaleDateString() : date.toLocaleString();
+  }
+
+  /* ------------------------------------------------------------------- theme */
+
+  function prefersDark() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+
+  function activeTheme() {
+    return theme || (prefersDark() ? "dark" : "light");
+  }
+
+  function applyTheme() {
+    var current = activeTheme();
+    document.documentElement.setAttribute("data-theme", current);
+    if (!el.themeToggleBtn) return;
+    var label = current === "dark" ? "Switch to light theme" : "Switch to dark theme";
+    el.themeToggleBtn.setAttribute("aria-pressed", current === "dark" ? "true" : "false");
+    el.themeToggleBtn.setAttribute("aria-label", label);
+    el.themeToggleBtn.title = label;
+    el.themeToggleIcon.textContent = current === "dark" ? "☀" : "☾";
+  }
+
+  function loadTheme() {
+    var stored = null;
+    try {
+      stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    } catch (e) { /* no or unusable storage — follow the OS preference */ }
+    if (stored === "light" || stored === "dark") theme = stored;
+    applyTheme();
+    el.themeToggleBtn.addEventListener("click", toggleTheme);
+    // Without an explicit choice the app keeps following the OS setting.
+    if (window.matchMedia) {
+      var query = window.matchMedia("(prefers-color-scheme: dark)");
+      var onChange = function () { if (!theme) applyTheme(); };
+      if (query.addEventListener) query.addEventListener("change", onChange);
+      else if (query.addListener) query.addListener(onChange);
+    }
+  }
+
+  function toggleTheme() {
+    theme = activeTheme() === "dark" ? "light" : "dark";
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (e) { /* storage unavailable — the choice stays for this session */ }
+    applyTheme();
   }
 
   /* ----------------------------------------------------------------- sorting */
@@ -372,6 +429,8 @@
     account = null;
     render();
     show(el.toolbar, false);
+    show(el.listHeader, false);
+    showFilters(false);
     show(el.items, false);
     show(el.empty, false);
     show(el.signOut, false);
@@ -595,7 +654,8 @@
       select.appendChild(option);
     });
     select.value = options.indexOf(previous) !== -1 ? previous : "";
-    show(select, headers.indexOf(column) !== -1);
+    show(select.parentNode.classList.contains("filters-field") ? select.parentNode : select,
+      headers.indexOf(column) !== -1);
   }
 
   function toggleTagFilter(tag) {
@@ -629,6 +689,36 @@
     });
     show(el.clearTagsBtn, selectedTags.length > 0);
     show(el.tagFilter, hasTagsColumn() && tags.length > 0);
+    syncFilterControls();
+  }
+
+  // Number of filters (category, room, tags) currently narrowing the list.
+  function activeFilterCount() {
+    var count = selectedTags.length;
+    if (el.filterCategory.value) count += 1;
+    if (el.filterRoom.value) count += 1;
+    return count;
+  }
+
+  function syncFilterControls() {
+    var count = activeFilterCount();
+    el.filtersCount.textContent = String(count);
+    show(el.filtersCount, count > 0);
+    el.clearFiltersBtn.disabled = count === 0;
+  }
+
+  function showFilters(open) {
+    show(el.filtersPanel, open);
+    el.filtersBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function clearFilters() {
+    if (activeFilterCount() === 0) return;
+    el.filterCategory.value = "";
+    el.filterRoom.value = "";
+    selectedTags = [];
+    fillTagFilter();
+    render();
   }
 
   function clearTagFilter() {
@@ -1092,17 +1182,20 @@
     show(el.signIn, false);
     show(el.signOut, true);
     show(el.toolbar, true);
+    show(el.listHeader, true);
     show(el.items, true);
     refresh();
   }
 
   function syncSortControls() {
     el.sortField.value = sortField;
-    el.sortDirectionBtn.textContent = sortDirection === "desc" ? "Descending" : "Ascending";
+    var descending = sortDirection === "desc";
+    el.sortDirectionIcon.textContent = descending ? "↓" : "↑";
     el.sortDirectionBtn.setAttribute(
       "aria-label",
-      "Sort direction: " + (sortDirection === "desc" ? "descending" : "ascending")
+      "Sort direction: " + (descending ? "descending" : "ascending")
     );
+    el.sortDirectionBtn.title = el.sortDirectionBtn.getAttribute("aria-label");
   }
 
   function wireEvents() {
@@ -1113,8 +1206,32 @@
     el.expandAllBtn.addEventListener("click", function () { setAllPanels(true); });
     el.collapseAllBtn.addEventListener("click", function () { setAllPanels(false); });
     el.search.addEventListener("input", render);
-    el.filterCategory.addEventListener("change", render);
-    el.filterRoom.addEventListener("change", render);
+    el.filterCategory.addEventListener("change", function () {
+      syncFilterControls();
+      render();
+    });
+    el.filterRoom.addEventListener("change", function () {
+      syncFilterControls();
+      render();
+    });
+    el.filtersBtn.addEventListener("click", function () {
+      showFilters(el.filtersPanel.hidden);
+    });
+    el.clearFiltersBtn.addEventListener("click", clearFilters);
+    // Close the filters popover on an outside click or Escape, like a menu.
+    document.addEventListener("click", function (event) {
+      if (el.filtersPanel.hidden) return;
+      // Tag toggles rebuild themselves, so a click target may already be gone
+      // from the document by the time this runs; that is not an outside click.
+      if (!document.contains(event.target)) return;
+      if (el.filtersBtn.contains(event.target) || el.filtersPanel.contains(event.target)) return;
+      showFilters(false);
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape" || el.filtersPanel.hidden) return;
+      showFilters(false);
+      el.filtersBtn.focus();
+    });
     el.sortField.addEventListener("change", function () {
       sortField = SORT_FIELDS.indexOf(el.sortField.value) !== -1
         ? el.sortField.value
@@ -1157,6 +1274,7 @@
 
   function start() {
     try {
+      loadTheme();
       if (typeof msal === "undefined") {
         setStatus("The Microsoft sign-in library (MSAL) could not be loaded. Check your network or ad blocker.", true);
         return;
