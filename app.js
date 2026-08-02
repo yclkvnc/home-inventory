@@ -30,8 +30,14 @@
   // How long the card of a freshly saved item stays highlighted, in milliseconds.
   var HIGHLIGHT_TIMEOUT = 2500;
   var SAVE_LABEL = "Save";
-  // Fields the toolbar sort control offers, for both items and categories.
-  var SORT_FIELDS = ["Name", "CreatedAt", "UpdatedAt"];
+  // Fields the toolbar sort control offers, for both items and categories. The
+  // value is the column name used for sorting; the label is what the user sees.
+  var SORT_OPTIONS = [
+    { value: "Name", label: "Name" },
+    { value: "CreatedAt", label: "Created" },
+    { value: "UpdatedAt", label: "Updated" }
+  ];
+  var SORT_FIELDS = SORT_OPTIONS.map(function (option) { return option.value; });
   var DEFAULT_SORT_FIELD = "UpdatedAt";
   var DEFAULT_SORT_DIRECTION = "desc";
   var SORT_STORAGE_KEY = "homeInventory.sort";
@@ -262,6 +268,18 @@
   }
 
   /* ----------------------------------------------------------------- sorting */
+
+  // The sort control is built from SORT_OPTIONS so the value sent to the sorting
+  // logic stays a column name while the user sees a short, friendly label.
+  function fillSortOptions() {
+    el.sortField.textContent = "";
+    SORT_OPTIONS.forEach(function (item) {
+      var option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = "Sort: " + item.label;
+      el.sortField.appendChild(option);
+    });
+  }
 
   function loadSort() {
     var stored = null;
@@ -1288,6 +1306,7 @@
         return;
       }
       wireEvents();
+      fillSortOptions();
       loadSort();
       syncSortControls();
       initAuth().then(function (existingAccount) {
