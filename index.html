@@ -44,10 +44,17 @@
         <p id="photo-current" class="hint" hidden></p>
       </div>
       <div id="form-fields" class="form-fields"></div>
-      <p id="form-error" class="error" hidden></p>
+      <div id="form-error" class="error" role="alert" hidden>
+        <span id="form-error-text"></span>
+        <button type="button" id="retry-btn" class="btn btn-small" hidden>Retry</button>
+        <button type="button" id="dismiss-error-btn" class="btn btn-small">Dismiss</button>
+      </div>
       <menu class="dialog-actions">
         <button type="button" id="cancel-btn" class="btn">Cancel</button>
-        <button type="submit" id="save-btn" class="btn btn-primary">Save</button>
+        <button type="submit" id="save-btn" class="btn btn-primary">
+          <span id="save-spinner" class="spinner" hidden aria-hidden="true"></span>
+          <span id="save-label">Save</span>
+        </button>
       </menu>
     </form>
   </dialog>
@@ -58,6 +65,10 @@
       <button type="button" id="photo-close-btn" class="btn">Close</button>
     </menu>
   </dialog>
+
+  <div class="toasts">
+    <div id="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
+  </div>
 
   <!-- MSAL.js v2, vendored locally (no npm / no build step / no third-party CDN). -->
   <script src="vendor/msal-browser.min.js"

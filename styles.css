@@ -132,6 +132,9 @@ body {
 
 .hint { font-size: 0.8rem; color: var(--muted); margin: 4px 0 0; }
 .error { color: var(--danger); font-size: 0.88rem; }
+#form-error { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 0; }
+#form-error span { flex: 1; overflow-wrap: anywhere; }
+.btn-small { padding: 4px 10px; font-size: 0.85rem; }
 
 .dialog-thumb {
   display: block;
@@ -160,6 +163,52 @@ body {
 
 .photo-dialog { width: min(900px, 94vw); }
 .photo-dialog img { width: 100%; height: auto; border-radius: var(--radius); }
+
+.btn[disabled] { opacity: 0.6; cursor: progress; }
+
+#save-btn { display: inline-flex; align-items: center; gap: 8px; }
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.toasts {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+  width: min(420px, 92vw);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: #1f2328;
+  color: #fff;
+  font-size: 0.92rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+}
+.toast p { margin: 0; flex: 1; overflow-wrap: anywhere; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
 
 @media (max-width: 480px) {
   .toolbar { align-items: center; }
