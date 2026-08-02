@@ -80,7 +80,7 @@ These steps are one-time and must be done manually by the repo owner.
 1. Create a folder named `HomeInventory` in your OneDrive.
 2. Inside it, create an Excel workbook named `inventory.xlsx`.
 3. Put these headers in the first row:
-   `ID`, `Name`, `Category`, `Room`, `Quantity`, `Notes`, `PhotoName`, `CreatedAt`, `Status`.
+   `ID`, `Name`, `Category`, `Room`, `Quantity`, `Notes`, `Tags`, `PhotoName`, `CreatedAt`, `Status`.
 4. Select the header row and choose **Insert → Table** (with headers), then rename the
    table to `Table1` (Table Design → Table Name).
 5. Inside `HomeInventory`, create a subfolder named `Photos` — all item photos are
@@ -123,8 +123,13 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
 - **Category** and **Room** suggest values already used in the inventory, while still
   accepting any new value you type.
 - **Edit** / **Delete** are available on every card (delete asks for confirmation).
-- **Search** filters live across Name, Category, Room and Notes.
+- **Tags** let you label an item freely: pick a tag already used in the inventory from
+  the suggestion list or type a new one and press Enter. Each tag becomes a chip that
+  can be removed individually.
+- **Search** filters live across Name, Category, Room, Notes and Tags.
 - **Filters** narrow the list by Category or Room.
+- **Tag filter** in the toolbar lists every tag in use; selecting several shows only the
+  items carrying *all* of them, and **Clear tags** resets the selection.
 - Items are grouped by Category; click a photo thumbnail to view it full size.
 
 ### Dynamic columns
@@ -133,6 +138,13 @@ The app reads the column headers from the Excel table at runtime. Add a new colu
 Excel (for example `Brand` or `Warranty Until`) and it automatically appears in the form
 and on the cards — no code change needed. `ID`, `PhotoName`, `CreatedAt` and `Status` are
 managed by the app and are not editable in the form.
+
+### Tags column
+
+The optional `Tags` column stores all tags of an item in a single cell, separated by
+semicolons (for example `electronics;living room;fragile`). Whitespace around a tag is
+trimmed when reading and writing, and empty entries are ignored. If the column is missing,
+the tag editor and the tag filter simply do not appear.
 
 ### Status column
 

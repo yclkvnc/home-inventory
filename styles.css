@@ -115,6 +115,50 @@ body {
 
 .card-actions { display: flex; gap: 8px; margin-top: auto; }
 
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #eef1f5;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.tag-toggle { cursor: pointer; }
+.tag-toggle:hover { background: #e2e7ee; }
+.tag-toggle[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.tag-remove {
+  font: inherit;
+  line-height: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tag-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1 1 100%;
+}
+.tag-filter-label { font-size: 0.85rem; color: var(--muted); }
+
 .dialog {
   border: 1px solid var(--border);
   border-radius: var(--radius);

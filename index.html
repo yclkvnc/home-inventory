@@ -25,6 +25,11 @@
       <select id="filter-room" class="input" aria-label="Filter by room"></select>
       <button id="add-btn" type="button" class="btn btn-primary">Add Item</button>
       <button id="refresh-btn" type="button" class="btn">Refresh</button>
+      <div id="tag-filter" class="tag-filter" role="group" aria-label="Filter by tags" hidden>
+        <span class="tag-filter-label">Tags:</span>
+        <div id="tag-filter-list" class="tags"></div>
+        <button id="clear-tags-btn" type="button" class="btn btn-small" hidden>Clear tags</button>
+      </div>
     </section>
 
     <section id="items" class="items" hidden></section>
