@@ -217,7 +217,7 @@ body {
 .btn-danger { color: var(--danger); }
 .btn-danger:hover { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
 .btn-icon { padding: var(--space-2) 10px; min-width: 38px; font-size: var(--text-md); }
-.btn-small { padding: var(--space-1) 10px; font-size: var(--text-sm); }
+.btn-small { padding: var(--space-1) 10px; border-radius: var(--radius-xs); font-size: var(--text-sm); }
 
 .badge {
   display: inline-flex;
@@ -225,7 +225,7 @@ body {
   justify-content: center;
   min-width: 20px;
   height: 20px;
-  padding: 0 var(--radius-xs);
+  padding: 0 6px;
   border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--accent-contrast);
@@ -466,7 +466,7 @@ body {
 
 /* --------------------------------------------------------------------- tags */
 
-.tags { display: flex; flex-wrap: wrap; gap: var(--radius-xs); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .tag {
   display: inline-flex;
@@ -560,14 +560,14 @@ body {
   object-fit: contain;
   border-radius: var(--radius-sm);
   background: var(--surface-2);
-  margin-top: var(--radius-xs);
+  margin-top: 6px;
 }
 
 #photo-preview {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: var(--radius-xs);
+  margin-top: 6px;
 }
 
 .dialog-actions {
