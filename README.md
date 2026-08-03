@@ -133,13 +133,16 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
 - **Tag filter** in the filters panel lists every tag in use; selecting several shows only
   the items carrying *all* of them, and **Clear tags** resets the tag selection.
 - **Sort** drives both levels at once: pick `Name`, `CreatedAt` or `UpdatedAt` and toggle
-  the direction with the ↓/↑ button. Items are sorted by the chosen field, categories by
+  the direction with the ↓/↑ button. Items are sorted by the chosen field, groups by
   the newest value among their items (alphabetically when `Name` is chosen). Rows with an empty
   `UpdatedAt` fall back to their `CreatedAt`, and rows with neither sort last. The
   selection defaults to `UpdatedAt` descending and is remembered in `localStorage`.
-- Items are grouped by Category inside collapsible panels — all collapsed on load; use
-  **Expand all** / **Collapse all** above the list to open or close every panel at once.
-  Click a photo thumbnail to view it full size.
+- **Group by** picks how the list is arranged: `No group` shows one flat grid of cards,
+  `By category` (the default) and `By room` put the items into collapsible panels — all
+  collapsed on load; use **Expand all** / **Collapse all** above the list to open or close
+  every panel at once. Items with an empty value land under `Uncategorized` or `No room`.
+  Each mode remembers which of its panels are open, and the selection is remembered in
+  `localStorage` under `homeInventory.groupBy`. Click a photo thumbnail to view it full size.
 - **Theme**: the ☾/☀ button in the top bar switches between light and dark. Without an
   explicit choice the app follows the operating system setting (`prefers-color-scheme`);
   the choice is remembered in `localStorage` under `homeInventory.theme`.
@@ -147,7 +150,7 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
   avatar with your initials. Clicking it opens a panel with your profile photo (from
   Microsoft Graph, falling back to the initials when you have none), your full name, your
   email address and the **Sign out** button. The panel closes on an outside click or Escape.
-- After saving an item, its category panel opens and the item is scrolled into view and
+- After saving an item, its group panel opens and the item is scrolled into view and
   briefly highlighted; the sort selection is left untouched.
 
 ### Dynamic columns
