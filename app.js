@@ -267,13 +267,20 @@
     return date && !isNaN(date.getTime()) ? date : null;
   }
 
-  // Every date shown in the UI is rendered in the viewer's local timezone; any
-  // other value is passed through unchanged.
+  function pad2(number) {
+    return (number < 10 ? "0" : "") + number;
+  }
+
+  // Every date shown in the UI is rendered in the viewer's local timezone as
+  // dd.MM.yyyy HH:mm:ss (dd.MM.yyyy for date-only values); any other value is
+  // passed through unchanged.
   function formatValue(value) {
     var text = String(value === undefined || value === null ? "" : value);
     var date = parseDate(text);
     if (!date) return text;
-    return ISO_DATE.test(text.trim()) ? date.toLocaleDateString() : date.toLocaleString();
+    var day = pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." + date.getFullYear();
+    if (ISO_DATE.test(text.trim())) return day;
+    return day + " " + pad2(date.getHours()) + ":" + pad2(date.getMinutes()) + ":" + pad2(date.getSeconds());
   }
 
   /* ------------------------------------------------------------------- theme */

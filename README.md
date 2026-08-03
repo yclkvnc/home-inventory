@@ -160,7 +160,8 @@ Excel (for example `Brand` or `Warranty Until`) and it automatically appears in 
 and on the cards — no code change needed. `ID`, `PhotoName`, `CreatedAt`, `UpdatedAt` and
 `Status` are managed by the app and are not editable in the form. `CreatedAt` and
 `UpdatedAt` are still shown read-only on the cards; `UpdatedAt` is written on every save,
-edit and delete. All dates are displayed in your local timezone.
+edit and delete. All dates are displayed in your local timezone, in the fixed format
+`dd.MM.yyyy HH:mm:ss` (`dd.MM.yyyy` for date-only values).
 
 ### Tags column
 
