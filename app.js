@@ -1524,6 +1524,9 @@
       show(el.photoCurrent, false);
     });
     el.photoCloseBtn.addEventListener("click", function () { el.photoDialog.close(); });
+    el.photoDialog.addEventListener("click", function (event) {
+      if (event.target === el.photoDialog) { el.photoDialog.close(); }
+    });
   }
 
   window.addEventListener("error", function (e) {
