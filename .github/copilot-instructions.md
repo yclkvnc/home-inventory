@@ -38,6 +38,11 @@ refused with 403.
 Verify every URL returns 200, and confirm the final diff contains no image
 files, before finishing.
 
+The description you publish with the images must be the final one. If you update
+the description again afterwards, carry the same image markdown forward — never
+replace it with a reference to earlier versions, since the description has no
+visible history and the images would simply disappear.
+
 Keep the files small: JPEG at a sensible quality, one viewport per file.
 
 ### Layout
