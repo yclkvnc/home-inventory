@@ -14,37 +14,40 @@
 ## Screenshots on pull requests
 
 Any change that alters the UI should be verified locally with Playwright and
-documented with screenshots on the pull request page.
+documented with screenshots in the pull request description.
 
-The agent sandbox cannot upload attachments to GitHub, so the images live on a
-dedicated branch instead:
+Prefer attaching the images to the pull request directly, if a tool for that is
+available to you. If it is not, say so explicitly rather than falling back
+silently.
 
-1. Push the captures to the `pr-screenshots` branch, inside a folder named after
-   the pull request number — for example `39/card-grid-light-after.jpg`. The
-   branch shares no history with `main`, holds nothing but these folders, and is
-   never merged or deleted; removing it would break the image links in older
-   pull requests.
-2. Embed them in the PR description as inline markdown images pointing at that
-   branch:
-   `https://raw.githubusercontent.com/yclkvnc/home-inventory/pr-screenshots/<pr-number>/<file>`
-3. Never commit image files to the working branch — its diff must contain only
-   the source files the change touches.
-4. Keep the files small: JPEG at a sensible quality, one viewport per file.
+Only if no attachment path exists, use the two-commit route:
 
-### Before and after
+1. Commit the captures to the working branch under `docs/screenshots/` and push.
+2. Embed them in the description with raw URLs pinned to that commit's full SHA:
+   `https://raw.githubusercontent.com/yclkvnc/home-inventory/<full-sha>/docs/screenshots/<file>`
+3. Push a second commit deleting `docs/screenshots/`, so the final diff contains
+   only the source files the change touches. The images stay reachable through
+   the pinned SHA.
+4. Note in the description that the images are hosted from a commit outside the
+   diff, and that the links will eventually break once that commit is
+   unreachable.
 
-For every scenario, capture the same view twice: once with the base branch
-checked out and once with the change applied. Present the pair side by side in a
-markdown table so the difference is obvious:
+Do not push to any branch other than the pull request's own — the sandbox is
+refused with 403.
 
-| Before | After |
-|---|---|
-| ![before](…) | ![after](…) |
+Verify every URL returns 200, and confirm the final diff contains no image
+files, before finishing.
 
-Group the scenarios under headings, pair light and dark theme, and wrap long
-sets in collapsible `<details>` blocks. Skip the "before" shot only when the
-view did not exist previously.
+Keep the files small: JPEG at a sensible quality, one viewport per file.
 
-Alongside the images, state in the description which browser engine produced
-them, and note anything a still image cannot show — transitions, hover states,
-or `prefers-reduced-motion` behaviour.
+### Layout
+
+Group the captures under headings by scenario, pair light and dark theme in a
+two-column table, and wrap each scenario in a `<details>` block — leave the
+first one `open`.
+
+Include a "before" column, captured against the base branch, whenever the view
+existed beforehand.
+
+State which browser engine produced them, and note anything a still image cannot
+show — transitions, hover states, or `prefers-reduced-motion` behaviour.
