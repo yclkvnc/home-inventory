@@ -27,6 +27,9 @@
   var DEFAULT_PHOTO_FOLDER = "Photos";
   // How long a success confirmation stays on screen, in milliseconds.
   var TOAST_TIMEOUT = 4000;
+  // Upper bound for the toast exit transition, after which the node is removed
+  // even if no transitionend arrived.
+  var TOAST_EXIT_TIMEOUT = 500;
   // How long the card of a freshly saved item stays highlighted, in milliseconds.
   var HIGHLIGHT_TIMEOUT = 2500;
   var SAVE_LABEL = "Save";
@@ -152,7 +155,7 @@
   function showToast(message) {
     if (!el.toastRegion) return;
     if (toastTimer) clearTimeout(toastTimer);
-    el.toastRegion.textContent = "";
+    dismissToasts();
     var toast = document.createElement("div");
     toast.className = "toast";
     var text = document.createElement("p");
@@ -160,9 +163,28 @@
     toast.appendChild(text);
     el.toastRegion.appendChild(toast);
     toastTimer = setTimeout(function () {
-      el.toastRegion.textContent = "";
+      dismissToast(toast);
       toastTimer = null;
     }, TOAST_TIMEOUT);
+  }
+
+  // The node has to stay in the DOM while the exit transition runs, so it is
+  // removed on transitionend, with a timer in case the transition never fires
+  // (reduced motion, or a browser that skips it).
+  function dismissToast(toast) {
+    if (!toast || toast.className.indexOf("toast-exit") !== -1) return;
+    toast.className = "toast toast-exit";
+    toast.setAttribute("aria-hidden", "true");
+    var remove = function () {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    };
+    toast.addEventListener("transitionend", remove);
+    setTimeout(remove, TOAST_EXIT_TIMEOUT);
+  }
+
+  function dismissToasts() {
+    var toasts = el.toastRegion.querySelectorAll(".toast");
+    Array.prototype.forEach.call(toasts, dismissToast);
   }
 
   // Errors stay visible (role="alert") until the user dismisses or retries.
@@ -797,6 +819,10 @@
     card.className = "card";
     if (record.ID) card.setAttribute("data-item-id", record.ID);
 
+    // The media box keeps its 4:3 aspect ratio whether or not a photo loads, so
+    // every card in a row stays the same height.
+    var media = document.createElement("div");
+    media.className = "card-media";
     if (record.PhotoName) {
       var img = document.createElement("img");
       img.className = "thumb";
@@ -804,17 +830,26 @@
       img.addEventListener("click", function () {
         openPhoto(record.PhotoName, img.alt);
       });
-      card.appendChild(img);
+      media.appendChild(img);
       photoUrl(record.PhotoName).then(function (url) {
         img.src = url;
       }, function () {
         img.remove();
+        media.className = "card-media card-media-empty";
       });
+    } else {
+      media.className = "card-media card-media-empty";
     }
+    card.appendChild(media);
+
+    var body = document.createElement("div");
+    body.className = "card-body";
 
     var title = document.createElement("h3");
     title.textContent = record.Name || "(no name)";
-    card.appendChild(title);
+    // The heading clamps to two lines, so keep the full name in the tooltip.
+    title.title = title.textContent;
+    body.appendChild(title);
 
     var list = document.createElement("dl");
     headers.forEach(function (header) {
@@ -828,7 +863,7 @@
       list.appendChild(dt);
       list.appendChild(dd);
     });
-    card.appendChild(list);
+    body.appendChild(list);
 
     var tags = parseTags(record[TAGS_COLUMN]);
     if (tags.length > 0) {
@@ -837,8 +872,10 @@
       tags.forEach(function (tag) {
         tagList.appendChild(tagChip(tag));
       });
-      card.appendChild(tagList);
+      body.appendChild(tagList);
     }
+
+    card.appendChild(body);
 
     var actions = document.createElement("div");
     actions.className = "card-actions";
@@ -875,6 +912,14 @@
 
     var groups = {};
     var order = [];
+    // Totals ignore the current filter — but not deletions — so the header can
+    // show how much the filter is hiding.
+    var totals = {};
+    rows.forEach(function (row) {
+      if (row.values.Status === "deleted") return;
+      var name = row.values.Category || UNCATEGORIZED;
+      totals[name] = (totals[name] || 0) + 1;
+    });
     visible.slice().sort(compareRows).forEach(function (row) {
       var category = row.values.Category || UNCATEGORIZED;
       if (!groups[category]) {
@@ -897,7 +942,29 @@
 
       var heading = document.createElement("summary");
       heading.className = "category-title";
-      heading.textContent = category;
+      var name = document.createElement("span");
+      name.className = "category-name";
+      name.textContent = category;
+      heading.appendChild(name);
+
+      var shown = groups[category].length;
+      var total = totals[category] || shown;
+      var count = document.createElement("span");
+      count.className = "category-count";
+      // The bracketed figures read as noise to a screen reader; the prose
+      // sibling below carries the same information.
+      count.setAttribute("aria-hidden", "true");
+      count.textContent = shown < total
+        ? "(" + shown + " / " + total + ")"
+        : "(" + total + ")";
+      heading.appendChild(count);
+
+      var countLabel = document.createElement("span");
+      countLabel.className = "visually-hidden";
+      countLabel.textContent = shown < total
+        ? shown + " of " + total + " items shown"
+        : total + (total === 1 ? " item" : " items");
+      heading.appendChild(countLabel);
       panel.appendChild(heading);
 
       var grid = document.createElement("div");
