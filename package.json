@@ -1,0 +1,14 @@
+{
+  "name": "home-inventory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development-only tooling for the Home Inventory app. The app itself is plain HTML/CSS/JS and has no build step; npm is used solely to run the Playwright end-to-end tests.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

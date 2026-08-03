@@ -32,6 +32,8 @@ everyone who signs in opens exactly the same data.
 | `app.js` | Auth, Microsoft Graph calls, rendering |
 | `config.js` | Your Client ID, Excel file ID, folder ID, photo subfolder name |
 | `vendor/msal-browser.min.js` | MSAL.js browser library, vendored locally |
+| `tests/` | Playwright end-to-end tests (development only) |
+| `playwright.config.js` | Test runner configuration |
 
 ### Vendored MSAL
 
@@ -53,6 +55,23 @@ cp package/lib/msal-browser.min.js vendor/msal-browser.min.js
 
 Do not commit the `.map` file. Staying on v2 is intentional: v3+ contains breaking
 changes that would require rewriting the auth layer in `app.js`.
+
+## Tests
+
+End-to-end tests run with [Playwright](https://playwright.dev/). They are a
+development-only dependency: the app itself still ships as plain HTML, CSS and
+JavaScript with no build step, and nothing under `node_modules/` is deployed.
+
+```sh
+npm install
+npx playwright install --with-deps chromium
+npm test
+```
+
+The runner serves the repository with `python3 -m http.server` and stubs
+everything the app talks to — `config.js`, MSAL and Microsoft Graph are all
+answered from `tests/fixtures.js`, so no real account or spreadsheet is needed.
+The same suite runs on every pull request through `.github/workflows/tests.yml`.
 
 ## Setup
 
