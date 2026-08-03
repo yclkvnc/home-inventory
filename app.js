@@ -46,6 +46,17 @@
   var SORT_STORAGE_KEY = "homeInventory.sort";
   var THEME_STORAGE_KEY = "homeInventory.theme";
   var UNCATEGORIZED = "Uncategorized";
+  var NO_ROOM = "No room";
+  // Columns the toolbar can group the list by. An empty value renders one flat
+  // grid; the placeholder is used when the column is empty on a row.
+  var GROUP_OPTIONS = [
+    { value: "", label: "No group", placeholder: "" },
+    { value: "Category", label: "By category", placeholder: UNCATEGORIZED },
+    { value: "Room", label: "By room", placeholder: NO_ROOM }
+  ];
+  var GROUP_FIELDS = GROUP_OPTIONS.map(function (option) { return option.value; });
+  var DEFAULT_GROUP_FIELD = "Category";
+  var GROUP_STORAGE_KEY = "homeInventory.groupBy";
 
   var el = {
     status: document.getElementById("status"),
@@ -61,6 +72,7 @@
     filterRoom: document.getElementById("filter-room"),
     tagFilter: document.getElementById("tag-filter"),
     sortField: document.getElementById("sort-field"),
+    groupField: document.getElementById("group-field"),
     sortDirectionBtn: document.getElementById("sort-direction-btn"),
     sortDirectionIcon: document.getElementById("sort-direction-icon"),
     listHeader: document.getElementById("list-header"),
@@ -118,12 +130,15 @@
   var toastTimer = null;
   var photoUrlCache = {}; // PhotoName -> object URL
   var accountPhotoUrl = null; // object URL of the signed-in user's Graph photo
-  // Category name -> true when its panel is expanded. Empty on load, so every
-  // category panel starts collapsed.
-  var expandedCategories = {};
+  // Grouping mode -> { group name: true } for every expanded panel. Empty on
+  // load, so every panel starts collapsed, and kept per mode so switching the
+  // grouping does not carry the state of another mode over.
+  var expandedGroups = {};
   // Sort selection shared by categories and items; restored from localStorage.
   var sortField = DEFAULT_SORT_FIELD;
   var sortDirection = DEFAULT_SORT_DIRECTION;
+  // Column the list is grouped by, "" for a flat list; restored from localStorage.
+  var groupField = DEFAULT_GROUP_FIELD;
   var highlightTimer = null;
   // "light" or "dark" once chosen explicitly, null while following the OS.
   var theme = null;
@@ -370,9 +385,9 @@
     return compareTime(rowTime(a.values, sortField), rowTime(b.values, sortField));
   }
 
-  // A category sorts by the most recent value of its items; with Name selected
-  // categories keep their natural alphabetical order instead.
-  function categoryTime(groupRows) {
+  // A group sorts by the most recent value of its items; with Name selected
+  // groups keep their natural alphabetical order instead.
+  function groupTime(groupRows) {
     var best = null;
     groupRows.forEach(function (row) {
       var time = rowTime(row.values, sortField);
@@ -381,9 +396,76 @@
     return best;
   }
 
-  function compareCategories(a, b, groups) {
+  function compareGroups(a, b, groups) {
     if (sortField === "Name") return compareText(a, b);
-    return compareTime(categoryTime(groups[a]), categoryTime(groups[b]));
+    return compareTime(groupTime(groups[a]), groupTime(groups[b]));
+  }
+
+  /* ---------------------------------------------------------------- grouping */
+
+  // The group control mirrors the sort one: the value is a column name (or ""
+  // for a flat list) while the user sees a short label.
+  function fillGroupOptions() {
+    el.groupField.textContent = "";
+    GROUP_OPTIONS.forEach(function (item) {
+      var option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = item.label;
+      el.groupField.appendChild(option);
+    });
+  }
+
+  function loadGroup() {
+    var stored = null;
+    try {
+      stored = window.localStorage.getItem(GROUP_STORAGE_KEY);
+    } catch (e) { /* no or unusable storage — keep the default */ }
+    if (stored !== null && GROUP_FIELDS.indexOf(stored) !== -1) groupField = stored;
+  }
+
+  function saveGroup() {
+    try {
+      window.localStorage.setItem(GROUP_STORAGE_KEY, groupField);
+    } catch (e) { /* storage unavailable — the selection stays for this session */ }
+  }
+
+  // Placeholder shown for rows with no value in the grouping column.
+  function groupPlaceholder(field) {
+    var placeholder = "";
+    GROUP_OPTIONS.forEach(function (option) {
+      if (option.value === field) placeholder = option.placeholder;
+    });
+    return placeholder;
+  }
+
+  function groupKey(record, field) {
+    return record[field] || groupPlaceholder(field);
+  }
+
+  // Buckets rows by the grouping column, keeping the incoming row order inside
+  // each group and returning the group names in their sorted order.
+  function groupRows(list, field) {
+    var groups = {};
+    var order = [];
+    list.forEach(function (row) {
+      var key = groupKey(row.values, field);
+      if (!groups[key]) {
+        groups[key] = [];
+        order.push(key);
+      }
+      groups[key].push(row);
+    });
+    order.sort(function (a, b) {
+      return compareGroups(a, b, groups);
+    });
+    return { groups: groups, order: order };
+  }
+
+  // Expanded panels of the active grouping mode, created on first use so each
+  // mode keeps its own state.
+  function expandedForGroup() {
+    if (!expandedGroups[groupField]) expandedGroups[groupField] = {};
+    return expandedGroups[groupField];
   }
 
   /* ------------------------------------------------------------------- tags */
@@ -910,34 +992,36 @@
       setStatus("");
     }
 
-    var groups = {};
-    var order = [];
+    var sorted = visible.slice().sort(compareRows);
+
+    if (!groupField) {
+      var flat = document.createElement("div");
+      flat.className = "cards";
+      sorted.forEach(function (row) {
+        flat.appendChild(buildCard(row));
+      });
+      el.items.appendChild(flat);
+      return;
+    }
+
     // Totals ignore the current filter — but not deletions — so the header can
     // show how much the filter is hiding.
     var totals = {};
     rows.forEach(function (row) {
       if (row.values.Status === "deleted") return;
-      var name = row.values.Category || UNCATEGORIZED;
+      var name = groupKey(row.values, groupField);
       totals[name] = (totals[name] || 0) + 1;
     });
-    visible.slice().sort(compareRows).forEach(function (row) {
-      var category = row.values.Category || UNCATEGORIZED;
-      if (!groups[category]) {
-        groups[category] = [];
-        order.push(category);
-      }
-      groups[category].push(row);
-    });
-    order.sort(function (a, b) {
-      return compareCategories(a, b, groups);
-    });
+    var grouped = groupRows(sorted, groupField);
+    var groups = grouped.groups;
+    var expanded = expandedForGroup();
 
-    order.forEach(function (category) {
+    grouped.order.forEach(function (category) {
       var panel = document.createElement("details");
       panel.className = "category-panel";
-      panel.open = expandedCategories[category] === true;
+      panel.open = expanded[category] === true;
       panel.addEventListener("toggle", function () {
-        expandedCategories[category] = panel.open;
+        expanded[category] = panel.open;
       });
 
       var heading = document.createElement("summary");
@@ -990,10 +1074,13 @@
   function revealItem(id) {
     var row = findRowById(id);
     if (!row) return;
-    var category = row.values.Category || UNCATEGORIZED;
-    if (expandedCategories[category] !== true) {
-      expandedCategories[category] = true;
-      render();
+    if (groupField) {
+      var expanded = expandedForGroup();
+      var key = groupKey(row.values, groupField);
+      if (expanded[key] !== true) {
+        expanded[key] = true;
+        render();
+      }
     }
     var card = null;
     var cards = el.items.querySelectorAll(".card");
@@ -1339,6 +1426,14 @@
     el.sortDirectionBtn.title = el.sortDirectionBtn.getAttribute("aria-label");
   }
 
+  // Without panels there is nothing to expand or collapse, so both buttons go
+  // away in the flat mode.
+  function syncGroupControls() {
+    el.groupField.value = groupField;
+    show(el.expandAllBtn, !!groupField);
+    show(el.collapseAllBtn, !!groupField);
+  }
+
   function wireEvents() {
     el.signIn.addEventListener("click", signIn);
     el.signOut.addEventListener("click", signOut);
@@ -1402,6 +1497,14 @@
       syncSortControls();
       render();
     });
+    el.groupField.addEventListener("change", function () {
+      groupField = GROUP_FIELDS.indexOf(el.groupField.value) !== -1
+        ? el.groupField.value
+        : DEFAULT_GROUP_FIELD;
+      saveGroup();
+      syncGroupControls();
+      render();
+    });
     el.clearTagsBtn.addEventListener("click", clearTagFilter);
     el.form.addEventListener("submit", saveItem);
     el.cancelBtn.addEventListener("click", function () { el.dialog.close(); });
@@ -1447,6 +1550,9 @@
       fillSortOptions();
       loadSort();
       syncSortControls();
+      fillGroupOptions();
+      loadGroup();
+      syncGroupControls();
       initAuth().then(function (existingAccount) {
         if (existingAccount) {
           account = existingAccount;
