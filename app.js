@@ -129,6 +129,9 @@
   var saving = false;
   var toastTimer = null;
   var photoUrlCache = {}; // PhotoName -> object URL
+  var selectedPhotoUrl = null; // object URL for the file currently selected in the form
+  var currentFormPhoto = null;
+  var formVersion = 0;
   var accountPhotoUrl = null; // object URL of the signed-in user's Graph photo
   // Grouping mode -> { group name: true } for every expanded panel. Empty on
   // load, so every panel starts collapsed, and kept per mode so switching the
@@ -735,6 +738,11 @@
     photoUrlCache = {};
   }
 
+  function revokeSelectedPhotoUrl() {
+    if (selectedPhotoUrl) URL.revokeObjectURL(selectedPhotoUrl);
+    selectedPhotoUrl = null;
+  }
+
   function revokeAccountPhoto() {
     if (accountPhotoUrl) URL.revokeObjectURL(accountPhotoUrl);
     accountPhotoUrl = null;
@@ -1271,6 +1279,8 @@
   }
 
   function openForm(id) {
+    revokeSelectedPhotoUrl();
+    var version = ++formVersion;
     editingId = id || null;
     removePhotoFlag = false;
     var row = id ? findRowById(id) : null;
@@ -1278,12 +1288,14 @@
     buildForm(row ? row.values : null);
     el.photoInput.value = "";
     var current = row && row.values.PhotoName;
+    currentFormPhoto = current || null;
     el.photoCurrent.textContent = current ? "Current photo: " + current + " (choose a file to replace it)" : "";
     show(el.photoCurrent, !!current);
     show(el.photoPreview, false);
     el.photoThumb.src = "";
     if (current) {
       photoUrl(current).then(function (url) {
+        if (version !== formVersion || selectedPhotoUrl) return;
         el.photoThumb.src = url;
         show(el.photoPreview, true);
         show(el.photoCurrent, false);
@@ -1522,6 +1534,36 @@
       show(el.photoPreview, false);
       el.photoThumb.src = "";
       show(el.photoCurrent, false);
+    });
+    el.photoInput.addEventListener("change", function () {
+      revokeSelectedPhotoUrl();
+      var file = el.photoInput.files && el.photoInput.files[0];
+      if (file) {
+        selectedPhotoUrl = URL.createObjectURL(file);
+        removePhotoFlag = false;
+        el.photoThumb.src = selectedPhotoUrl;
+        show(el.photoPreview, true);
+        show(el.photoCurrent, false);
+      } else {
+        if (currentFormPhoto && !removePhotoFlag) {
+          var version = formVersion;
+          show(el.photoPreview, false);
+          show(el.photoCurrent, true);
+          photoUrl(currentFormPhoto).then(function (url) {
+            if (version !== formVersion || selectedPhotoUrl) return;
+            el.photoThumb.src = url;
+            show(el.photoPreview, true);
+            show(el.photoCurrent, false);
+          });
+        } else {
+          show(el.photoPreview, false);
+        }
+      }
+    });
+    el.dialog.addEventListener("close", function () {
+      revokeSelectedPhotoUrl();
+      currentFormPhoto = null;
+      formVersion++;
     });
     el.photoCloseBtn.addEventListener("click", function () { el.photoDialog.close(); });
     el.photoDialog.addEventListener("click", function (event) {
