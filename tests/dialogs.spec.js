@@ -138,6 +138,33 @@ test("removing the photo hides the preview", async function ({ page }) {
   await expect(page.locator("#photo-current")).toBeHidden();
 });
 
+test("selecting a file previews it right away", async function ({ page }) {
+  await gotoSignedIn(page, {});
+  await page.locator("#add-btn").click();
+  await expect(page.locator("#photo-preview")).toBeHidden();
+
+  await page.locator("#photo-input").setInputFiles(UPLOAD);
+  await expect(page.locator("#photo-preview")).toBeVisible();
+  await expect.poll(function () {
+    return page.locator("#photo-thumb").evaluate(function (img) { return img.src; });
+  }).toMatch(/^blob:/);
+  await expect(page.locator("#photo-current")).toBeHidden();
+});
+
+test("clearing the file selection restores the stored photo", async function ({ page }) {
+  await gotoSignedIn(page, { rows: [fixtures.ROW_WITH_PHOTO] });
+  await page.locator("#group-field").selectOption("");
+  await page.locator("#items .card").getByRole("button", { name: "Edit" }).click();
+  await expect(page.locator("#photo-preview")).toBeVisible();
+
+  await page.locator("#photo-input").setInputFiles(UPLOAD);
+  await expect(page.locator("#photo-preview")).toBeVisible();
+
+  await page.locator("#photo-input").setInputFiles([]);
+  await expect(page.locator("#photo-preview")).toBeVisible();
+  await expect(page.locator("#photo-current")).toBeHidden();
+});
+
 test("the photo dialog opens from a card thumbnail and closes", async function ({ page }) {
   await gotoSignedIn(page, { rows: [fixtures.ROW_WITH_PHOTO] });
   await page.locator("#group-field").selectOption("");
@@ -146,6 +173,17 @@ test("the photo dialog opens from a card thumbnail and closes", async function (
   await expect(page.locator("#photo-dialog")).toBeVisible();
   await expect(page.locator("#photo-full")).toHaveAttribute("alt", fixtures.ROW_WITH_PHOTO.Name);
   await page.locator("#photo-close-btn").click();
+  await expect(page.locator("#photo-dialog")).toBeHidden();
+});
+
+test("the photo dialog closes on a backdrop click", async function ({ page }) {
+  await gotoSignedIn(page, { rows: [fixtures.ROW_WITH_PHOTO] });
+  await page.locator("#group-field").selectOption("");
+  await page.locator("#items .card .thumb").click();
+  await expect(page.locator("#photo-dialog")).toBeVisible();
+
+  // The backdrop is the dialog element itself, outside its contents.
+  await page.locator("#photo-dialog").click({ position: { x: 2, y: 2 } });
   await expect(page.locator("#photo-dialog")).toBeHidden();
 });
 
