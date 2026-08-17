@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orphan Photos — Home Inventory</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1 class="brand">Orphan Photos</h1>
+    <div class="account">
+      <button id="theme-toggle-btn" type="button" class="btn btn-icon" aria-pressed="false" aria-label="Switch to dark theme" title="Switch to dark theme">
+        <span id="theme-toggle-icon" aria-hidden="true">☾</span>
+      </button>
+      <button id="signin-btn" type="button" class="btn btn-primary" hidden>Sign in with Microsoft</button>
+      <button id="signout-btn" type="button" class="btn" hidden>Sign out</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <p class="page-intro">Photos in the OneDrive Photos folder that are not referenced by any row in the inventory.</p>
+    <p id="status" class="status" role="status" aria-live="polite">Loading…</p>
+
+    <section id="orphan-toolbar" class="toolbar orphan-toolbar" hidden aria-label="Orphan photo actions">
+      <label class="select-all">
+        <input id="select-all" type="checkbox">
+        <span>Select all</span>
+      </label>
+      <span id="selection-count" class="selection-count">0 selected</span>
+      <div class="toolbar-actions">
+        <button id="delete-selected-btn" type="button" class="btn btn-danger" disabled>Delete selected</button>
+        <button id="refresh-btn" type="button" class="btn">Refresh</button>
+      </div>
+    </section>
+
+    <section id="orphan-photos" class="orphan-grid" aria-label="Orphan photos" hidden></section>
+    <p id="empty" class="empty" hidden>No orphan photos found.</p>
+  </main>
+
+  <!-- MSAL.js v2, vendored locally (no npm / no build step / no third-party CDN). -->
+  <script src="vendor/msal-browser.min.js"
+          onerror="(function(){var s=document.getElementById('status');s.textContent='The Microsoft sign-in library (MSAL) could not be loaded. Check your network or ad blocker.';s.className='status error';s.hidden=false;})()"></script>
+  <script src="config.js"></script>
+  <script src="orphan-photos.js"></script>
+</body>
+</html>

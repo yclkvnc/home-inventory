@@ -28,8 +28,10 @@ everyone who signs in opens exactly the same data.
 | File | Purpose |
 |---|---|
 | `index.html` | Single-page app shell |
+| `orphan-photos.html` | Standalone page for finding and deleting unreferenced photos |
 | `styles.css` | All styling (responsive, CSS Grid) |
 | `app.js` | Auth, Microsoft Graph calls, rendering |
+| `orphan-photos.js` | Orphan-photo scanning, selection and OneDrive deletion |
 | `config.js` | Your Client ID, Excel file ID, folder ID, photo subfolder name |
 | `vendor/msal-browser.min.js` | MSAL.js browser library, vendored locally |
 | `tests/` | Playwright end-to-end tests (development only) |
@@ -171,6 +173,9 @@ branch `main`, folder `/ (root)`. The site is then live at the redirect URI you 
   email address and the **Sign out** button. The panel closes on an outside click or Escape.
 - After saving an item, its group panel opens and the item is scrolled into view and
   briefly highlighted; the sort selection is left untouched.
+- **Orphan photos**: open `orphan-photos.html` directly to compare the Photos folder
+  with every `PhotoName` value in the Excel table. Select individual photos or all
+  results, then use **Delete selected** to permanently remove them from OneDrive.
 
 ### Dynamic columns
 
