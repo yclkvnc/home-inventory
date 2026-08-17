@@ -5,6 +5,17 @@
 (function () {
   "use strict";
 
+  var lib = window.HomeInventoryLib;
+  var TAG_SEPARATOR = lib.TAG_SEPARATOR;
+  var compareText = lib.compareText;
+  var errorMessage = lib.errorMessage;
+  var fileExtension = lib.fileExtension;
+  var formatTags = lib.formatTags;
+  var formatValue = lib.formatValue;
+  var hasTag = lib.hasTag;
+  var parseTags = lib.parseTags;
+  var rowTime = lib.rowTime;
+
   var GRAPH = "https://graph.microsoft.com/v1.0";
 
   var PLACEHOLDERS = [
@@ -20,7 +31,6 @@
   var SEARCH_COLUMNS = ["Name", "Category", "Room", "Notes", "Tags"];
   // Column holding the item tags, stored as one separator-joined string.
   var TAGS_COLUMN = "Tags";
-  var TAG_SEPARATOR = " ";
   // Free-text columns that also offer existing values as datalist suggestions.
   var SUGGEST_COLUMNS = ["Category", "Room"];
   // Subfolder of the HomeInventory folder where item photos are stored.
@@ -240,52 +250,6 @@
     return String(Date.now()) + "-" + Math.random().toString(36).slice(2, 8);
   }
 
-  function fileExtension(name) {
-    var match = /\.([a-z0-9]{1,5})$/i.exec(name || "");
-    return match ? match[1].toLowerCase() : "jpg";
-  }
-
-  function errorMessage(error) {
-    if (!error) return "Unknown error.";
-    return error.message || String(error);
-  }
-
-  /* ------------------------------------------------------------------ dates */
-
-  var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-  var ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
-
-  // Parses the date values the app stores (ISO timestamps) and the plain dates a
-  // user may type into a custom column. Date-only values are read as local dates
-  // so they are not shifted by a day west of UTC.
-  function parseDate(value) {
-    var text = String(value === undefined || value === null ? "" : value).trim();
-    var date = null;
-    if (ISO_DATE.test(text)) {
-      var parts = text.split("-");
-      date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    } else if (ISO_DATE_TIME.test(text)) {
-      date = new Date(text);
-    }
-    return date && !isNaN(date.getTime()) ? date : null;
-  }
-
-  function pad2(number) {
-    return (number < 10 ? "0" : "") + number;
-  }
-
-  // Every date shown in the UI is rendered in the viewer's local timezone as
-  // dd.MM.yyyy HH:mm:ss (dd.MM.yyyy for date-only values); any other value is
-  // passed through unchanged.
-  function formatValue(value) {
-    var text = String(value === undefined || value === null ? "" : value);
-    var date = parseDate(text);
-    if (!date) return text;
-    var day = pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." + date.getFullYear();
-    if (ISO_DATE.test(text.trim())) return day;
-    return day + " " + pad2(date.getHours()) + ":" + pad2(date.getMinutes()) + ":" + pad2(date.getSeconds());
-  }
-
   /* ------------------------------------------------------------------- theme */
 
   function prefersDark() {
@@ -366,20 +330,8 @@
     } catch (e) { /* storage unavailable — the selection stays for this session */ }
   }
 
-  // Timestamp a row sorts by, or null when it has no usable value. An empty
-  // UpdatedAt falls back to CreatedAt for rows written before that column existed.
-  function rowTime(record, field) {
-    var date = parseDate(record[field]);
-    if (!date && field === "UpdatedAt") date = parseDate(record.CreatedAt);
-    return date ? date.getTime() : null;
-  }
-
   function directed(comparison) {
     return sortDirection === "desc" ? -comparison : comparison;
-  }
-
-  function compareText(a, b) {
-    return directed(a.toLowerCase().localeCompare(b.toLowerCase()));
   }
 
   // Rows without a value sort last whatever the direction is.
@@ -391,7 +343,7 @@
   }
 
   function compareRows(a, b) {
-    if (sortField === "Name") return compareText(a.values.Name || "", b.values.Name || "");
+    if (sortField === "Name") return compareText(a.values.Name || "", b.values.Name || "", directed);
     return compareTime(rowTime(a.values, sortField), rowTime(b.values, sortField));
   }
 
@@ -407,7 +359,7 @@
   }
 
   function compareGroups(a, b, groups) {
-    if (sortField === "Name") return compareText(a, b);
+    if (sortField === "Name") return compareText(a, b, directed);
     return compareTime(groupTime(groups[a]), groupTime(groups[b]));
   }
 
@@ -479,27 +431,6 @@
   }
 
   /* ------------------------------------------------------------------- tags */
-
-  // Tags live in one cell as a separator-joined string; whitespace around each
-  // tag is dropped and empty entries are ignored.
-  function parseTags(value) {
-    return String(value || "").split(TAG_SEPARATOR).map(function (tag) {
-      return tag.trim();
-    }).filter(function (tag) {
-      return tag !== "";
-    });
-  }
-
-  function formatTags(tags) {
-    return tags.join(TAG_SEPARATOR);
-  }
-
-  function hasTag(tags, tag) {
-    var wanted = tag.toLowerCase();
-    return tags.some(function (existing) {
-      return existing.toLowerCase() === wanted;
-    });
-  }
 
   // Every tag used by the visible (not deleted) rows, sorted alphabetically.
   function allTags() {

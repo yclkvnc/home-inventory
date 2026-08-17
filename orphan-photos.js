@@ -4,6 +4,8 @@
 (function () {
   "use strict";
 
+  var errorMessage = window.HomeInventoryLib.errorMessage;
+
   var GRAPH = "https://graph.microsoft.com/v1.0";
   var DEFAULT_PHOTO_FOLDER = "Photos";
   var THEME_STORAGE_KEY = "homeInventory.theme";
@@ -44,11 +46,6 @@
     el.status.textContent = message || "";
     el.status.hidden = !message;
     el.status.classList.toggle("error", !!isError);
-  }
-
-  function errorMessage(error) {
-    if (!error) return "Unknown error.";
-    return error.message || String(error);
   }
 
   function isConfigured() {
